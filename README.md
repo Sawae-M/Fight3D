@@ -11,14 +11,25 @@
 - 弱 → 中 → 強 の連続技(当たっているとつながる)、パッシブ「連刃」のダメージアップ
 - R キーで位置とサンドバッグをリセット
 
+## 使っているパッケージ
+
+| パッケージ | 用途 | 入れ方 |
+| --- | --- | --- |
+| Input System | 入力(キーボード・コントローラー) | Package Manager → Unity Registry |
+| Cinemachine 3.x | 背後カメラ | Package Manager → Unity Registry |
+| LitMotion 2.x | 見た目の動き(揺れ・ダメージ数字など) | Package Manager → + → Install package from git URL → `https://github.com/annulusgames/LitMotion.git?path=src/LitMotion/Assets/LitMotion` |
+
+3つ全部が入るまでゲーム本体(`Assets/Scripts`)はコンパイルされません(`Fight3D.asmdef` の設定)。足りないときは ▶ を押すと案内が出ます。
+
 ## 操作
 
-| キー | 動き |
-| --- | --- |
-| W / S | 相手に近づく / 離れる |
-| A / D | 相手の周りを回る |
-| U / I / O | 弱 / 中 / 強 攻撃 |
-| R | リセット |
+| 操作 | キーボード | コントローラー(仮) |
+| --- | --- | --- |
+| 近づく / 離れる / 回る | W / S / A・D | 左スティック・十字キー |
+| 弱 / 中 / 強 攻撃 | U / I / O | X(□) / Y(△) / B(○) |
+| リセット | R | START |
+
+キー配置は `Assets/Resources/FightControls.inputactions` をダブルクリックすると変更できます。
 
 ## ファイルの説明(Assets/Scripts)
 
@@ -28,10 +39,10 @@
 | FighterController.cs | カゲツの移動と攻撃 |
 | AttackData.cs | 弱・中・強のダメージやフレーム数(数値を変えたいときはここ) |
 | Sandbag.cs | サンドバッグ(体力・連続技の記録・揺れ) |
-| FollowCamera.cs | 背後カメラ |
+| CameraRig.cs | 背後カメラ(Cinemachine) |
 | TrainingHUD.cs | ダメージ数字と右上・左上の表示 |
 | DollBuilder.cs | 人形の仮モデルを図形で作る |
 | Arena.cs | ステージの大きさと見えない壁 |
-| GameInput.cs | キーボード入力 |
+| FightInput.cs | 入力(Input System) |
 
 シーンに何も置かなくても、▶ を押せば動きます。

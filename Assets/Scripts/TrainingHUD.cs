@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using LitMotion;
 using UnityEngine;
 
 namespace Fight3D
@@ -8,7 +9,7 @@ namespace Fight3D
     /// - サンドバッグの上に出るダメージ数字
     /// - 右上: 直前のダメージ / 連続技の合計 / ヒット数 / 連刃ボーナス
     /// - 左上: 操作説明
-    /// (仮の表示なので Unity の古い GUI 機能 OnGUI で簡単に描いている)
+    /// (仮の表示なので Unity の古い GUI 機能 OnGUI で簡単に描いている。数字の動きは LitMotion)
     /// </summary>
     public class TrainingHUD : MonoBehaviour
     {
@@ -16,11 +17,12 @@ namespace Fight3D
         {
             public string Text;
             public Vector3 WorldPos;
-            public float Age;
+            public float Rise;    // 上に浮かぶ量(m)
+            public float Scale;   // 出た瞬間だけ大きく
+            public float Alpha;   // 透明度
             public Color Color;
         }
 
-        const float PopupLife = 0.9f;
         static readonly List<Popup> popups = new List<Popup>();
 
         public Sandbag Sandbag;
@@ -35,20 +37,18 @@ namespace Fight3D
             var color = Color.Lerp(new Color(1f, 0.95f, 0.4f), new Color(1f, 0.35f, 0.25f), t);
             // 同じ場所に重ならないよう少しずらす
             Vector3 jitter = new Vector3(Random.Range(-0.3f, 0.3f), Random.Range(0f, 0.2f), 0f);
-            popups.Add(new Popup { Text = damage.ToString(), WorldPos = worldPos + jitter, Age = 0f, Color = color });
+            var p = new Popup { Text = damage.ToString(), WorldPos = worldPos + jitter, Scale = 1f, Alpha = 1f, Color = color };
+            popups.Add(p);
+
+            // ポンと大きく出て → 上に浮かびながら → 消える
+            LMotion.Create(1.6f, 1f, 0.18f).WithEase(Ease.OutBack).Bind(p, (v, x) => x.Scale = v);
+            LMotion.Create(0f, 1.0f, 0.9f).WithEase(Ease.OutCubic).Bind(p, (v, x) => x.Rise = v);
+            LMotion.Create(1f, 0f, 0.35f).WithDelay(0.55f)
+                .WithOnComplete(() => popups.Remove(p))
+                .Bind(p, (v, x) => x.Alpha = v);
         }
 
         void OnDestroy() { popups.Clear(); }
-
-        void Update()
-        {
-            for (int i = popups.Count - 1; i >= 0; i--)
-            {
-                popups[i].Age += Time.deltaTime;
-                popups[i].WorldPos += Vector3.up * 1.2f * Time.deltaTime;
-                if (popups[i].Age > PopupLife) popups.RemoveAt(i);
-            }
-        }
 
         void MakeStyles()
         {
@@ -77,10 +77,11 @@ namespace Fight3D
             {
                 foreach (var p in popups)
                 {
-                    Vector3 sp = cam.WorldToScreenPoint(p.WorldPos);
+                    Vector3 sp = cam.WorldToScreenPoint(p.WorldPos + Vector3.up * p.Rise);
                     if (sp.z < 0f) continue; // カメラの後ろ
-                    float alpha = 1f - Mathf.Clamp01((p.Age - PopupLife * 0.5f) / (PopupLife * 0.5f));
-                    float pop = 1f + Mathf.Max(0f, 0.15f - p.Age) * 3f; // 出た瞬間だけ少し大きく
+                    float alpha = p.Alpha;
+                    float pop = p.Scale;
+                    popupStyle.fontSize = shadowStyle.fontSize = Mathf.RoundToInt(56 * s * pop);
                     var rect = new Rect(sp.x - 150 * s, Screen.height - sp.y - 50 * s * pop, 300 * s, 100 * s * pop);
                     shadowStyle.normal.textColor = new Color(0f, 0f, 0f, 0.8f * alpha);
                     GUI.Label(new Rect(rect.x + 3 * s, rect.y + 3 * s, rect.width, rect.height), p.Text, shadowStyle);
@@ -119,10 +120,10 @@ namespace Fight3D
                 GUI.Box(new Rect(x, y, w, 210 * s), GUIContent.none, boxStyle);
                 float lx = x + 20 * s, ly = y + 12 * s, lh = 36 * s;
                 GUI.Label(new Rect(lx, ly, w, lh), "<b>トレーニング(カゲツ)</b>", labelStyle); ly += lh;
-                GUI.Label(new Rect(lx, ly, w, lh), "W A S D : 移動", labelStyle); ly += lh;
-                GUI.Label(new Rect(lx, ly, w, lh), "U / I / O : 弱 / 中 / 強", labelStyle); ly += lh;
+                GUI.Label(new Rect(lx, ly, w, lh), "移動: WASD / 左スティック", labelStyle); ly += lh;
+                GUI.Label(new Rect(lx, ly, w, lh), "弱中強: U I O / X Y B", labelStyle); ly += lh;
                 GUI.Label(new Rect(lx, ly, w, lh), "弱→中→強 で連続技", labelStyle); ly += lh;
-                GUI.Label(new Rect(lx, ly, w, lh), "R : 位置をリセット", labelStyle);
+                GUI.Label(new Rect(lx, ly, w, lh), "リセット: R / START", labelStyle);
             }
         }
 
