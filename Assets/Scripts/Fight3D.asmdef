@@ -1,0 +1,38 @@
+{
+    "name": "Fight3D",
+    "rootNamespace": "Fight3D",
+    "references": [
+        "Unity.InputSystem",
+        "Unity.Cinemachine",
+        "LitMotion"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "FIGHT3D_HAS_INPUT_SYSTEM",
+        "FIGHT3D_HAS_CINEMACHINE",
+        "FIGHT3D_HAS_LITMOTION"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "1.7.0",
+            "define": "FIGHT3D_HAS_INPUT_SYSTEM"
+        },
+        {
+            "name": "com.unity.cinemachine",
+            "expression": "3.0.0",
+            "define": "FIGHT3D_HAS_CINEMACHINE"
+        },
+        {
+            "name": "com.annulusgames.lit-motion",
+            "expression": "2.0.0",
+            "define": "FIGHT3D_HAS_LITMOTION"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -52,11 +52,8 @@ namespace Fight3D
             }
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.06f, 0.04f, 0.10f); // 夜空
-            var follow = cam.gameObject.GetComponent<FollowCamera>();
-            if (follow == null) follow = cam.gameObject.AddComponent<FollowCamera>();
-            follow.Player = kagetsuGo.transform;
-            follow.Target = bagGo.transform;
-            follow.SnapNow();
+            // 背後カメラ(Cinemachine)
+            fighter.CameraRig = CameraRig.Create(cam, kagetsuGo.transform, bagGo.transform);
 
             // 画面表示
             var hud = new GameObject("TrainingHUD").AddComponent<TrainingHUD>();

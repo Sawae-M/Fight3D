@@ -36,7 +36,9 @@ namespace Fight3D
         public static GameObject BuildKagetsu(out Transform swordPivot)
         {
             var root = new GameObject("Kagetsu");
-            var t = root.transform;
+            // 見た目の部品は「Visual」の下にまとめる(呼吸の上下などで Visual だけ動かすため)
+            var t = new GameObject("Visual").transform;
+            t.SetParent(root.transform, false);
 
             Color body = new Color(0.12f, 0.10f, 0.20f);   // 濃い紫紺
             Color cloth = new Color(0.30f, 0.08f, 0.12f);  // 暗い赤

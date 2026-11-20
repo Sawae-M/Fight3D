@@ -1,11 +1,12 @@
+using LitMotion;
 using UnityEngine;
 
 namespace Fight3D
 {
     /// <summary>
     /// カゲツを操作するクラス(マイルストーン1)。
-    /// - WASD で移動(W=相手に近づく、S=離れる、A/D=相手の周りを回る)
-    /// - U / I / O で 弱 / 中 / 強 攻撃
+    /// - WASD / 左スティックで移動(W=相手に近づく、S=離れる、A/D=相手の周りを回る)
+    /// - U / I / O(コントローラーは X / Y / B)で 弱 / 中 / 強 攻撃
     /// - 弱 → 中 → 強 は当たっていればつながる(連続技)
     /// - 技の終わり際 8F 以内に押したボタンは、技が終わった瞬間に出る(先行入力)
     /// - パッシブ「連刃」: 2ヒット目から1ヒットごとに +3%(最大 +24%)
@@ -22,6 +23,7 @@ namespace Fight3D
         public Sandbag TargetSandbag;
         public Transform SwordPivot;       // 剣の支点(見た目用)
         public Vector3 StartPosition;
+        public CameraRig CameraRig;        // リセット時にカメラを瞬間移動させる用
 
         // 攻撃の状態
         AttackData current;                // 今出している技(null なら技を出していない)
@@ -34,17 +36,44 @@ namespace Fight3D
         // Update で読んだ入力を FixedUpdate に渡すための入れ物
         AttackType? pressedThisFrame;
 
+        FightInput input;
+        Transform visual;
+
         public bool IsAttacking => current != null;
         public int LastComboBonusPercent { get; private set; }
+
+        void Awake()
+        {
+            input = new FightInput();
+        }
+
+        void Start()
+        {
+            // 待機中の呼吸(LitMotion で Visual をゆっくり上下させる)
+            visual = transform.Find("Visual");
+            if (visual != null)
+            {
+                LMotion.Create(0f, 0.025f, 1.1f)
+                    .WithEase(Ease.InOutSine)
+                    .WithLoops(-1, LoopType.Yoyo)
+                    .Bind(visual, (y, v) => v.localPosition = new Vector3(0f, y, 0f))
+                    .AddTo(gameObject);
+            }
+        }
+
+        void OnDestroy()
+        {
+            input?.Dispose();
+        }
 
         void Update()
         {
             // 押した瞬間の入力は Update で拾う(FixedUpdate だと取りこぼすことがある)
-            if (GameInput.Pressed(GameInput.Key.U)) pressedThisFrame = AttackType.Light;
-            if (GameInput.Pressed(GameInput.Key.I)) pressedThisFrame = AttackType.Medium;
-            if (GameInput.Pressed(GameInput.Key.O)) pressedThisFrame = AttackType.Heavy;
+            if (input.Light.WasPressedThisFrame()) pressedThisFrame = AttackType.Light;
+            if (input.Medium.WasPressedThisFrame()) pressedThisFrame = AttackType.Medium;
+            if (input.Heavy.WasPressedThisFrame()) pressedThisFrame = AttackType.Heavy;
 
-            if (GameInput.Pressed(GameInput.Key.R)) ResetTraining();
+            if (input.Reset.WasPressedThisFrame()) ResetTraining();
 
             UpdateSwordPose();
         }
@@ -142,12 +171,9 @@ namespace Fight3D
         {
             if (Target == null) return;
 
-            float v = 0f, h = 0f;
-            if (GameInput.Held(GameInput.Key.W)) v += 1f;
-            if (GameInput.Held(GameInput.Key.S)) v -= 1f;
-            if (GameInput.Held(GameInput.Key.D)) h += 1f;
-            if (GameInput.Held(GameInput.Key.A)) h -= 1f;
-            if (v == 0f && h == 0f) return;
+            Vector2 stick = input.MoveValue;
+            if (stick.magnitude < 0.2f) return; // スティックの遊び
+            float v = stick.y, h = stick.x;
 
             Vector3 toTarget = Target.position - transform.position;
             toTarget.y = 0f;
@@ -155,7 +181,8 @@ namespace Fight3D
             Vector3 right = Vector3.Cross(Vector3.up, forward);
 
             Vector3 dir = (forward * v + right * h).normalized;
-            float speed = v > 0f ? ForwardSpeed : OtherSpeed;
+            // 前に倒しているときは前歩き速度、それ以外は後ろ・横歩き速度。倒し具合で遅くもなる
+            float speed = (v > Mathf.Abs(h) ? ForwardSpeed : OtherSpeed) * Mathf.Clamp01(stick.magnitude);
             Vector3 pos = transform.position + dir * speed * Time.fixedDeltaTime;
 
             // 相手とめり込まないようにする
@@ -186,6 +213,8 @@ namespace Fight3D
             bufferedAttack = null;
             transform.position = StartPosition;
             if (TargetSandbag != null) TargetSandbag.ResetState();
+            FaceTarget();
+            if (CameraRig != null) CameraRig.Snap();
         }
 
         // ---- ここから下は見た目(剣の振り)だけ ----
