@@ -10,28 +10,28 @@ namespace Fight3D
     {
         // 影穿ち
         public const int KageChainWindow = 40;   // 前の突きから 40F 以内なら連続で出せる
-        public const int KageMaxChain = 3;
+        public const int KageMaxChain = 3;  // 連続で出せる最大回数
         // 三日月払い
         public const int MikazukiCooldown = 180; // 3秒
         // 仮面解放
         public const int KamenDuration = 240;    // 4秒
         public const int KamenCooldown = 900;    // 15秒
-        public const float KamenSpeedScale = 1.3f;
-        public const float KamenStartupScale = 0.8f;
-        public const int MaxCurseMarks = 8;
-        public const int CurseDamagePerMark = 15;
+        public const float KamenSpeedScale = 1.3f;  // 移動速度の倍率
+        public const float KamenStartupScale = 0.8f;  // 技の出るまでの時間の倍率
+        public const int MaxCurseMarks = 8;  // 呪印の最大数
+        public const int CurseDamagePerMark = 15;  // 呪印1つのダメージ(最大 8×15 = 120)
 
         public int KageCount { get; private set; }   // 今の連続で何回突いたか
         int kageGap = 999;                           // 前の突きが終わってからのフレーム数
-        bool kageInProgress;
+        bool kageInProgress;  // 影穿ちを出している最中か
 
-        public int MikazukiCooldownLeft { get; private set; }
-        public int KamenCooldownLeft { get; private set; }
-        public int KamenLeft { get; private set; }
-        public int CurseMarks { get; private set; }
+        public int MikazukiCooldownLeft { get; private set; }  // 三日月払いが使えるまでの残り(F)
+        public int KamenCooldownLeft { get; private set; }  // 仮面解放が使えるまでの残り(F)
+        public int KamenLeft { get; private set; }  // 仮面解放の効果の残り(F)
+        public int CurseMarks { get; private set; }  // 今付いている呪印の数
 
-        public bool KamenActive => KamenLeft > 0;
-        public float SpeedScale => KamenActive ? KamenSpeedScale : 1f;
+        public bool KamenActive => KamenLeft > 0;  // 仮面解放の効果中か
+        public float SpeedScale => KamenActive ? KamenSpeedScale : 1f;  // 今の移動速度の倍率
 
         /// <summary>影穿ちをあと何回出せるか(画面表示用)</summary>
         public int KageRemaining
@@ -50,6 +50,7 @@ namespace Fight3D
             return Mathf.Max(1, Mathf.RoundToInt(startup * KamenStartupScale));
         }
 
+        /// <summary>そのスキルを今使えるか(回数・使えない時間・効果中か)</summary>
         public bool CanUse(Command c)
         {
             switch (c)
@@ -68,6 +69,7 @@ namespace Fight3D
             return KageCount == KageMaxChain - 1 ? KagetsuMoves.KageUgachi3 : KagetsuMoves.KageUgachi;
         }
 
+        /// <summary>技を出し始めたときに呼ぶ(回数を数える・使えない時間を始める・仮面解放を発動)</summary>
         public void OnMoveStarted(Command c)
         {
             switch (c)
@@ -88,6 +90,7 @@ namespace Fight3D
             }
         }
 
+        /// <summary>技が終わったときに呼ぶ(影穿ちの連続の猶予を数え始める)</summary>
         public void OnMoveEnded(Command c)
         {
             if (c == Command.Skill1)
@@ -125,6 +128,7 @@ namespace Fight3D
             return false;
         }
 
+        /// <summary>スキルの状態をすべて最初に戻す</summary>
         public void ResetAll()
         {
             KageCount = 0;

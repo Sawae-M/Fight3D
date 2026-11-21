@@ -16,10 +16,11 @@ namespace Fight3D
     /// <summary>決まったフレームに必ず当たる攻撃(ウルトの連続斬りなど)</summary>
     public struct ScriptedHit
     {
-        public int Frame;
-        public int Damage;
-        public HitEffect Effect;
-        public int Hitstun;
+        public int Frame;  // 技の何F目に当たるか
+        public int Damage;  // ダメージ
+        public HitEffect Effect;  // 当たった相手がどうなるか
+        public int Hitstun;  // のけぞり時間(F)
+        /// <summary>決まったフレームの攻撃を作る</summary>
         public ScriptedHit(int frame, int damage, HitEffect effect, int hitstun)
         { Frame = frame; Damage = damage; Effect = effect; Hitstun = hitstun; }
     }
@@ -29,8 +30,10 @@ namespace Fight3D
     {
         public Vector3 WindEuler, EndEuler;     // 構え → 振り終わり の向き
         public Vector3 WindOffset, EndOffset;   // 剣の支点の位置ずれ
+        /// <summary>剣の振り方を作る(向きと位置のずれを指定)</summary>
         public SwordPose(Vector3 wind, Vector3 end, Vector3 windOffset, Vector3 endOffset)
         { WindEuler = wind; EndEuler = end; WindOffset = windOffset; EndOffset = endOffset; }
+        /// <summary>剣の振り方を作る(向きだけ指定)</summary>
         public SwordPose(Vector3 wind, Vector3 end) : this(wind, end, Vector3.zero, Vector3.zero) { }
     }
 
@@ -40,8 +43,8 @@ namespace Fight3D
     /// </summary>
     public class MoveData
     {
-        public string Name;
-        public int Damage;
+        public string Name;  // 技の名前(画面表示用)
+        public int Damage;  // ダメージ
         public int Startup;          // 出るまで
         public int Active;           // 当たっている時間
         public int Recovery;         // 終わりの隙(当たったとき・外したとき共通)
@@ -49,21 +52,22 @@ namespace Fight3D
         public float Reach;          // リーチ(m)
         public float Arc = 60f;      // 当たる角度(前方の扇形の全体の角度)
         public int Hitstun;          // のけぞり時間
-        public HitEffect Effect = HitEffect.Normal;
+        public HitEffect Effect = HitEffect.Normal;  // 当たった相手がどうなるか
         public bool GuardBreak;      // ガード崩し
         public int ComboRank = -1;   // 通常技の強さ(弱0/中1/強2)。スキルは -1
 
         // 踏み込み: LungeStart〜LungeEnd フレームの間に LungeDistance m 前へ進む(相手に当たる距離で止まる)
         public float LungeDistance;
-        public int LungeStart = 1, LungeEnd;
+        public int LungeStart = 1, LungeEnd;  // 踏み込む期間(何F目から何F目まで)
 
         // 決まったフレームに必ず当たる攻撃(ある場合は Startup/Active の判定は使わない)
         public ScriptedHit[] ScriptedHits;
 
-        public SwordPose Pose;
+        public SwordPose Pose;  // 剣の振り方(見た目)
 
-        public bool IsNormal => ComboRank >= 0;
+        public bool IsNormal => ComboRank >= 0;  // 通常技(弱・中・強)か
 
+        /// <summary>技の全体のフレーム数(hit = 当たったか)</summary>
         public int TotalFrames(bool hit)
         {
             int recovery = (!hit && WhiffRecovery >= 0) ? WhiffRecovery : Recovery;
@@ -79,8 +83,8 @@ namespace Fight3D
         static readonly SwordPose ThrustPose = new SwordPose(
             new Vector3(10f, 5f, 0f), new Vector3(5f, 0f, 0f),
             new Vector3(0f, 0f, -0.25f), new Vector3(-0.15f, 0f, 0.45f));
-        static readonly SwordPose SlashPose = new SwordPose(new Vector3(10f, 85f, 0f), new Vector3(10f, -75f, 0f));
-        static readonly SwordPose OverheadPose = new SwordPose(new Vector3(-110f, 0f, 0f), new Vector3(55f, 0f, 0f));
+        static readonly SwordPose SlashPose = new SwordPose(new Vector3(10f, 85f, 0f), new Vector3(10f, -75f, 0f));  // 横なぎ(右から左へ)
+        static readonly SwordPose OverheadPose = new SwordPose(new Vector3(-110f, 0f, 0f), new Vector3(55f, 0f, 0f));  // 振り下ろし(頭上から前へ)
 
         // ---- 通常攻撃 ----
         public static readonly MoveData Light = new MoveData
@@ -141,6 +145,7 @@ namespace Fight3D
             Pose = SlashPose
         };
 
+        /// <summary>弱・中・強のボタンに対応する通常技を返す</summary>
         public static MoveData Normal(Command c)
         {
             switch (c)

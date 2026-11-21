@@ -14,14 +14,14 @@ namespace Fight3D
     [DefaultExecutionOrder(100)] // キャラが動いた後に目印を動かす
     public class CameraRig : MonoBehaviour
     {
-        public Transform Player;
-        public Transform Target;
-        public float LookHeight = 1.0f;
+        public Transform Player;  // 自分のキャラ(カメラはこの後ろにつく)
+        public Transform Target;  // 相手(カメラはこちらを向く)
+        public float LookHeight = 1.0f;  // 見る点の高さ(m)。だいたい胸のあたり
         [Range(0f, 1f)] public float LookTowardTarget = 0.7f;
 
-        public Transform Anchor { get; private set; }
-        public Transform LookPoint { get; private set; }
-        public CinemachineCamera Vcam { get; private set; }
+        public Transform Anchor { get; private set; }  // カメラがついて行く目印
+        public Transform LookPoint { get; private set; }  // カメラが画面中央に映す点
+        public CinemachineCamera Vcam { get; private set; }  // Cinemachine のカメラ本体
 
         /// <summary>カメラ一式を作る</summary>
         public static CameraRig Create(Camera mainCamera, Transform player, Transform target)
@@ -66,6 +66,7 @@ namespace Fight3D
         // キャラは FixedUpdate で動くので、目印も FixedUpdate で動かす
         void FixedUpdate() => UpdatePoints();
 
+        /// <summary>目印(Anchor と LookPoint)を、今のキャラと相手の位置に合わせて動かす</summary>
         void UpdatePoints()
         {
             if (Player == null || Target == null || Anchor == null) return;

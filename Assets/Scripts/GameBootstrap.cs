@@ -9,6 +9,7 @@ namespace Fight3D
     public static class GameBootstrap
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        /// <summary>▶ を押してシーンが読み込まれた直後に Unity が自動で呼ぶ</summary>
         static void OnGameStart()
         {
             // すでに組み立て済みなら何もしない
@@ -16,6 +17,7 @@ namespace Fight3D
             BuildTraining();
         }
 
+        /// <summary>トレーニング用の場面(ステージ・カゲツ・サンドバッグ・カメラ・表示)を全部作る</summary>
         public static void BuildTraining()
         {
             // ゲームの進行を 1秒に60回 にする(仕様書: 60fps 固定)
@@ -61,6 +63,7 @@ namespace Fight3D
             hud.Fighter = fighter;
         }
 
+        /// <summary>円形のステージと空の飾りを作る</summary>
         static void BuildStage()
         {
             var stage = new GameObject("Stage").transform;
@@ -80,6 +83,7 @@ namespace Fight3D
                 new Vector3(14f, 14f, 14f), new Color(0.6f, 0.15f, 0.12f));
         }
 
+        /// <summary>シーンにライトが無ければ作る</summary>
         static void EnsureLight()
         {
             if (Object.FindAnyObjectByType<Light>() != null) return;

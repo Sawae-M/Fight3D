@@ -15,74 +15,76 @@ namespace Fight3D
     /// </summary>
     public class FighterController : MonoBehaviour
     {
-        public const float BodyRadius = 0.35f;
+        public const float BodyRadius = 0.35f;  // 体の太さ(半径 m)。壁やめり込みの判定に使う
         const float ForwardSpeed = 4.0f;    // 前歩き m/秒
         const float OtherSpeed = 3.0f;      // 後ろ・横歩き m/秒
         const int BufferFrames = 8;         // 先行入力の猶予
         const int HitstopFrames = 4;        // 当たった瞬間に少し止まる演出
         const int UltSimultaneousFrames = 3;// O+P を同時とみなす猶予
         const int UltEarlyConvertFrames = 3;// 強・スキルの出始めならウルトに切り替える
-        public const float MaxGauge = 100f;
+        public const float MaxGauge = 100f;  // ウルトゲージの最大(仕様書: 100)
 
         // 回避ステップ(仕様書「6. 共通の動き」)
         const float DodgeDistance = 2.5f;
-        const int DodgeFrames = 24;
-        const int DodgeInvulnStart = 4, DodgeInvulnEnd = 12;
-        const int DodgeCooldown = 20;
+        const int DodgeFrames = 24;  // 回避の全体の時間(F)
+        const int DodgeInvulnStart = 4, DodgeInvulnEnd = 12;  // 無敵になる時間(4F目〜12F目)
+        const int DodgeCooldown = 20;  // 回避が終わってから次に使えるまで(F)
 
         public Transform Target;            // 相手(今はサンドバッグ)
-        public Sandbag TargetSandbag;
+        public Sandbag TargetSandbag;  // 相手のサンドバッグ(攻撃を当てる先)
         public Transform SwordPivot;        // 剣の支点(見た目用)
-        public Vector3 StartPosition;
+        public Vector3 StartPosition;  // リセットで戻る位置
         public CameraRig CameraRig;         // リセット時にカメラを瞬間移動させる用
 
         // ---- 外から見る用(画面表示など) ----
         public float Gauge { get; private set; }
-        public KagetsuSkills Skills { get; } = new KagetsuSkills();
-        public bool IsGuarding { get; private set; }
-        public bool IsDodging => dodgeFrame > 0;
-        public bool IsInvincible => dodgeFrame >= DodgeInvulnStart && dodgeFrame <= DodgeInvulnEnd;
-        public int DodgeCooldownLeft => dodgeCooldown;
-        public string CurrentMoveName => current != null ? current.Name : (IsDodging ? "回避" : (IsGuarding ? "ガード" : ""));
-        public int LastComboBonusPercent { get; private set; }
+        public KagetsuSkills Skills { get; } = new KagetsuSkills();  // カゲツのスキルの状態
+        public bool IsGuarding { get; private set; }  // ガード中か
+        public bool IsDodging => dodgeFrame > 0;  // 回避中か
+        public bool IsInvincible => dodgeFrame >= DodgeInvulnStart && dodgeFrame <= DodgeInvulnEnd;  // 無敵中か(回避の途中)
+        public int DodgeCooldownLeft => dodgeCooldown;  // 回避が次に使えるまでの残り(F)
+        public string CurrentMoveName => current != null ? current.Name : (IsDodging ? "回避" : (IsGuarding ? "ガード" : ""));  // 今の動作の名前(画面表示用)
+        public int LastComboBonusPercent { get; private set; }  // 直前のヒットの連刃ボーナス(%)
 
         // ---- 技の状態 ----
         MoveData current;                   // 今出している技(null なら出していない)
-        Command currentCommand;
+        Command currentCommand;  // 今の技を出したボタン
         int attackFrame;                    // 技が始まってから何F目か
         int curStartup;                     // 今の技の「出るまで」(仮面解放で短くなる)
         bool contacted;                     // 当たった or ガードされた(キャンセルできる)
         bool connected;                     // ヒットした(ウルトの演出に入る・隙が変わる)
-        float lungeTravelled;
-        Command? bufferedCommand;
-        int bufferLeft;
-        int hitstopLeft;
+        float lungeTravelled;  // 今の技で踏み込んだ距離(m)
+        Command? bufferedCommand;  // 先行入力された技(なければ null)
+        int bufferLeft;  // 先行入力が消えるまでの残り(F)
+        int hitstopLeft;  // ヒットストップの残り(F)。この間は時間が止まる
         int tick;                           // 経過フレーム
 
         // ---- 回避 ----
         int dodgeFrame;
-        int dodgeCooldown;
-        Vector3 dodgeDir;
-        bool dodgeBuffered;
-        int dodgeBufferLeft;
+        int dodgeCooldown;  // 回避が次に使えるまでの残り(F)
+        Vector3 dodgeDir;  // 回避で進む向き
+        bool dodgeBuffered;  // 回避が先行入力されているか
+        int dodgeBufferLeft;  // 回避の先行入力が消えるまでの残り(F)
 
         // ---- Update → FixedUpdate への入力の受け渡し ----
         Command? pressedCommand;
-        bool pressedDodge;
-        int lastHeavyTick = -100, lastSkillTick = -100;
+        bool pressedDodge;  // このフレームで回避ボタンが押されたか
+        int lastHeavyTick = -100, lastSkillTick = -100;  // 強・スキルを最後に押したフレーム(O+P 同時押しの判定用)
 
-        FightInput input;
-        Transform visual;
-        Renderer maskRenderer;
-        Color maskBaseColor;
-        MotionHandle maskPulse;
-        bool kamenVisualOn;
+        FightInput input;  // 入力
+        Transform visual;  // 見た目の部品のまとめ役(Visual)
+        Renderer maskRenderer;  // 仮面の見た目(仮面解放で色を変える)
+        Color maskBaseColor;  // 仮面の元の色
+        MotionHandle maskPulse;  // 仮面が脈打つ LitMotion のアニメ
+        bool kamenVisualOn;  // 仮面解放の見た目が今ついているか
 
+        /// <summary>作られた瞬間に1回だけ呼ばれる。入力の準備をする</summary>
         void Awake()
         {
             input = new FightInput();
         }
 
+        /// <summary>最初のフレームの前に1回だけ呼ばれる。待機の呼吸アニメと仮面の色の準備をする</summary>
         void Start()
         {
             visual = transform.Find("Visual");
@@ -104,6 +106,7 @@ namespace Fight3D
             }
         }
 
+        /// <summary>消えるときに呼ばれる。入力を片付ける</summary>
         void OnDestroy()
         {
             input?.Dispose();
@@ -112,6 +115,7 @@ namespace Fight3D
         // ================================================================
         //  入力(Update)
         // ================================================================
+        /// <summary>画面の更新ごとに呼ばれる。押した瞬間のボタンを拾い、見た目を更新する</summary>
         void Update()
         {
             // 押した瞬間の入力は Update で拾う(FixedUpdate だと取りこぼすことがある)
@@ -142,6 +146,7 @@ namespace Fight3D
         // ================================================================
         //  ゲームの進行(FixedUpdate、1F ごと)
         // ================================================================
+        /// <summary>1秒に60回(1F ごと)呼ばれる。ゲームの進行(技・移動・回避・ガード)をここで進める</summary>
         void FixedUpdate()
         {
             tick++;
@@ -177,6 +182,7 @@ namespace Fight3D
             FaceTarget();
         }
 
+        /// <summary>先行入力された技や回避を、出せるタイミングになったら出す</summary>
         void TryStartBuffered()
         {
             if (bufferedCommand.HasValue)
@@ -204,7 +210,7 @@ namespace Fight3D
             }
         }
 
-        // ---- 技を出せるか ----
+        /// <summary>今この技を出せるかを判定する(使えない時間・ゲージ・連続技のつながりのルール)</summary>
         bool CanStart(Command cmd)
         {
             if (dodgeFrame > 0) return false;
@@ -230,6 +236,7 @@ namespace Fight3D
             return false;
         }
 
+        /// <summary>ボタンに対応する技を選んで出し始める</summary>
         void StartMove(Command cmd)
         {
             if (current != null) EndMove(); // キャンセル
@@ -249,6 +256,7 @@ namespace Fight3D
             if (cmd == Command.Skill3) TrainingHUD.AddTextPopup("仮面解放", new Color(0.9f, 0.3f, 0.4f), transform.position + Vector3.up * 2.3f);
         }
 
+        /// <summary>技の状態をリセットして、指定した技の1F目から始める</summary>
         void BeginMove(MoveData move, Command cmd)
         {
             current = move;
@@ -261,12 +269,14 @@ namespace Fight3D
             IsGuarding = false;
         }
 
+        /// <summary>今の技を終わらせる</summary>
         void EndMove()
         {
             Skills.OnMoveEnded(currentCommand);
             current = null;
         }
 
+        /// <summary>今の技の全体のフレーム数(当たったか外したかで隙が変わる技もある)</summary>
         int CurrentTotalFrames()
         {
             int recovery = (!connected && current.WhiffRecovery >= 0) ? current.WhiffRecovery : current.Recovery;
@@ -275,6 +285,7 @@ namespace Fight3D
             return curStartup + current.Active + recovery;
         }
 
+        /// <summary>技を1F進める(踏み込み・当たり判定・ウルトの演出への切り替え)</summary>
         void TickMove()
         {
             attackFrame++;
@@ -362,6 +373,7 @@ namespace Fight3D
             Strike(marks * KagetsuSkills.CurseDamagePerMark, 12, HitEffect.Normal, false, true, 6);
         }
 
+        /// <summary>ウルトゲージを増やす(0〜100 の範囲に収める)</summary>
         public void AddGauge(float amount)
         {
             Gauge = Mathf.Clamp(Gauge + amount, 0f, MaxGauge);
@@ -370,6 +382,7 @@ namespace Fight3D
         // ================================================================
         //  移動・回避
         // ================================================================
+        /// <summary>スティック/WASD の入力で歩く(相手の方向を基準に前後左右)</summary>
         void Walk()
         {
             if (Target == null) return;
@@ -386,6 +399,7 @@ namespace Fight3D
             MoveTo(transform.position + dir * speed * Time.fixedDeltaTime);
         }
 
+        /// <summary>回避ステップを始める(方向は押している移動キー。なければ後ろ)</summary>
         void StartDodge()
         {
             Vector2 stick = input.MoveValue;
@@ -398,6 +412,7 @@ namespace Fight3D
             TickDodge();
         }
 
+        /// <summary>回避ステップを1F進める</summary>
         void TickDodge()
         {
             dodgeFrame++;
@@ -413,12 +428,14 @@ namespace Fight3D
             }
         }
 
+        /// <summary>回避の進み具合(0〜1)。はじめ速く、終わりゆっくりになる曲線</summary>
         static float DodgeCurve(float t)
         {
             t = Mathf.Clamp01(t);
             return 1f - (1f - t) * (1f - t);
         }
 
+        /// <summary>技の踏み込みで前に進む(相手に当たる距離で止まる)</summary>
         void Lunge(float distance)
         {
             if (Target == null) return;
@@ -447,6 +464,7 @@ namespace Fight3D
             transform.position = Arena.ClampInside(pos, BodyRadius);
         }
 
+        /// <summary>自分から相手への水平な向き(長さ1)</summary>
         Vector3 ForwardToTarget()
         {
             if (Target == null) return transform.forward;
@@ -455,6 +473,7 @@ namespace Fight3D
             return to.sqrMagnitude > 0.0001f ? to.normalized : transform.forward;
         }
 
+        /// <summary>自分と相手の水平な距離(m)</summary>
         float FlatDistanceToTarget()
         {
             Vector3 to = Target.position - transform.position;
@@ -462,6 +481,7 @@ namespace Fight3D
             return to.magnitude;
         }
 
+        /// <summary>相手が技の届く範囲(距離と前方の角度)にいるか</summary>
         bool TargetIsInReach(float reach, float arc)
         {
             if (Target == null) return false;
@@ -473,12 +493,14 @@ namespace Fight3D
             return dist < 0.01f || Vector3.Angle(transform.forward, to) <= arc * 0.5f;
         }
 
+        /// <summary>いつも相手の方を向く(ロックオン)</summary>
         void FaceTarget()
         {
             Vector3 f = ForwardToTarget();
             transform.rotation = Quaternion.LookRotation(f);
         }
 
+        /// <summary>トレーニングのリセット(位置・技・スキル・サンドバッグを最初の状態に戻す)</summary>
         void ResetTraining()
         {
             current = null;
@@ -497,10 +519,11 @@ namespace Fight3D
         //  見た目(剣の振り・回避の傾き・仮面の光)
         // ================================================================
         static readonly Vector3 RestPos = new Vector3(0.38f, 1.3f, 0.05f);
-        static readonly Quaternion RestRot = Quaternion.Euler(45f, 15f, 0f);
-        static readonly Quaternion GuardRot = Quaternion.Euler(-15f, -80f, 0f);
-        static readonly Vector3 GuardPos = new Vector3(0.3f, 1.45f, 0.35f);
+        static readonly Quaternion RestRot = Quaternion.Euler(45f, 15f, 0f);  // 構えの剣の向き(前下がり)
+        static readonly Quaternion GuardRot = Quaternion.Euler(-15f, -80f, 0f);  // ガードの剣の向き(体の前で横に)
+        static readonly Vector3 GuardPos = new Vector3(0.3f, 1.45f, 0.35f);  // ガードの剣の支点の位置
 
+        /// <summary>見た目をまとめて更新する</summary>
         void UpdateVisuals()
         {
             UpdateSwordPose();
@@ -508,6 +531,7 @@ namespace Fight3D
             UpdateMask();
         }
 
+        /// <summary>今の技の何F目かに合わせて剣の向きと位置を動かす(見た目だけ)</summary>
         void UpdateSwordPose()
         {
             if (SwordPivot == null) return;

@@ -6,21 +6,22 @@ namespace Fight3D
     /// <summary>攻撃1回分の情報(攻撃する側 → 受ける側)</summary>
     public struct HitInfo
     {
-        public int Damage;
-        public int Hitstun;
-        public int Hitstop;
-        public HitEffect Effect;
-        public bool GuardBreak;
-        public bool Unblockable;
-        public Vector3 AttackerPosition;
+        public int Damage;  // ダメージ(連刃ボーナス込み)
+        public int Hitstun;  // のけぞり時間(F)
+        public int Hitstop;  // ヒットストップ(F)
+        public HitEffect Effect;  // のけぞり / よろけ / 浮き
+        public bool GuardBreak;  // ガード崩しか
+        public bool Unblockable;  // ガードできない攻撃か(ウルトの連続斬り・呪印など)
+        public Vector3 AttackerPosition;  // 攻撃した人の位置(揺れる向きに使う)
     }
 
+    /// <summary>攻撃がどうなったか(ヒット / ガードされた / ガードを崩した)</summary>
     public enum HitOutcome { Hit, Guarded, GuardCrushed }
 
     /// <summary>攻撃の結果(受ける側 → 攻撃する側)</summary>
     public struct HitResult
     {
-        public HitOutcome Outcome;
+        public HitOutcome Outcome;  // ヒット / ガード / ガード崩し
         public int DamageDealt;   // 実際に与えたダメージ(浮き中の追い打ちは 0.7倍)
         public int ComboHit;      // 連続技の何ヒット目か
     }
@@ -35,7 +36,7 @@ namespace Fight3D
     /// </summary>
     public class Sandbag : MonoBehaviour
     {
-        public const float BodyRadius = 0.4f;
+        public const float BodyRadius = 0.4f;  // 体の太さ(半径 m)
         const int RecoverFrames = 120;   // 2秒
         const int ComboWindow = 40;      // 前のヒットから40F以内なら連続技が続く
         const int StaggerFrames = 40;    // よろけ
@@ -43,20 +44,20 @@ namespace Fight3D
         const int LandingFrames = 30;    // 着地後に動けない時間
         const float JuggleScale = 0.7f;  // 浮き中の追い打ち
         const int GuardCrushFrames = 30; // ガード崩し
-        const float BlockstunScale = 0.6f;
+        const float BlockstunScale = 0.6f;  // ガードしたときの硬直 = のけぞり時間 × 0.6(仮)
 
-        public int MaxHp = 1000;
-        public int Hp { get; private set; }
-        public int LastDamage { get; private set; }
-        public int ComboDamage { get; private set; }
-        public int ComboHits { get; private set; }
+        public int MaxHp = 1000;  // 最大体力(仮)
+        public int Hp { get; private set; }  // 今の体力
+        public int LastDamage { get; private set; }  // 直前のダメージ
+        public int ComboDamage { get; private set; }  // 今の連続技の合計ダメージ
+        public int ComboHits { get; private set; }  // 今の連続技のヒット数
 
         /// <summary>トレーニング設定: ガードする</summary>
         public bool GuardEnabled;
 
         /// <summary>動けない時間が残っているか(のけぞり・よろけ・浮き・ガード崩し)</summary>
         public bool InHitstun => hitstunLeft > 0;
-        public bool IsAirborne => airLeft > 0;
+        public bool IsAirborne => airLeft > 0;  // 浮いているか
         public bool IsGuarding => GuardEnabled && hitstunLeft <= 0; // 動けるときはガードしている
         public string StateText
         {
@@ -71,29 +72,31 @@ namespace Fight3D
         }
 
         public Transform Bag;          // 揺らす部分
-        public Vector3 StartPosition;
+        public Vector3 StartPosition;  // リセットで戻る位置
 
-        int hitstunLeft;
-        int blockstunLeft;
-        int airLeft;
-        bool staggered, crushed;
-        int framesSinceHit = 9999;
-        int hitstopLeft;
+        int hitstunLeft;  // 動けない時間の残り(F)
+        int blockstunLeft;  // ガード硬直の残り(F)
+        int airLeft;  // 浮いている時間の残り(F)
+        bool staggered, crushed;  // よろけ中か / ガード崩れ中か(表示用)
+        int framesSinceHit = 9999;  // 最後に攻撃されてからのフレーム数(9999 = ずっと前)
+        int hitstopLeft;  // ヒットストップの残り(F)
 
-        Vector3 wobbleAxis = Vector3.right;
-        Vector3 bagBaseScale = Vector3.one;
-        Vector3 bagBasePos;
-        float wobbleAngle;
-        float liftHeight;
-        Renderer[] renderers;
-        Color[] baseColors;
-        MotionHandle wobbleHandle, squashHandle, flashHandle, liftHandle;
+        Vector3 wobbleAxis = Vector3.right;  // 揺れる回転軸
+        Vector3 bagBaseScale = Vector3.one;  // 袋の元の大きさ
+        Vector3 bagBasePos;  // 袋の元の位置
+        float wobbleAngle;  // 今の揺れの角度(度)
+        float liftHeight;  // 今の浮きの高さ(m)
+        Renderer[] renderers;  // 色を変える部品
+        Color[] baseColors;  // 各部品の元の色
+        MotionHandle wobbleHandle, squashHandle, flashHandle, liftHandle;  // LitMotion のアニメ(揺れ・つぶれ・光り・浮き)。新しく殴られたら止めてやり直す
 
+        /// <summary>作られた瞬間に1回だけ呼ばれる。体力を満タンにする</summary>
         void Awake()
         {
             Hp = MaxHp;
         }
 
+        /// <summary>最初のフレームの前に1回だけ呼ばれる。元の色や大きさを覚えておく</summary>
         void Start()
         {
             renderers = GetComponentsInChildren<Renderer>();
@@ -238,6 +241,7 @@ namespace Fight3D
                 .AddTo(gameObject);
         }
 
+        /// <summary>光り具合を反映する(t: 0 = 元の色、1 = 光る色)</summary>
         void SetFlash(float t, Color flashColor)
         {
             for (int i = 0; i < renderers.Length; i++)
@@ -263,7 +267,7 @@ namespace Fight3D
             transform.position = StartPosition;
         }
 
-        // ゲームの進行は FixedUpdate(1秒に60回)で数える
+        /// <summary>1秒に60回(1F ごと)呼ばれる。動けない時間などを数える</summary>
         void FixedUpdate()
         {
             if (hitstopLeft > 0) { hitstopLeft--; return; } // ヒットストップ中は時間が止まる
@@ -283,7 +287,7 @@ namespace Fight3D
             }
         }
 
-        // 見た目(揺れ + 浮き)をまとめて反映
+        /// <summary>画面の更新の最後に呼ばれる。揺れと浮きの見た目をまとめて反映する</summary>
         void LateUpdate()
         {
             if (Bag == null) return;

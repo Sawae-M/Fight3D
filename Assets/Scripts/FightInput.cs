@@ -19,13 +19,14 @@ namespace Fight3D
     /// </summary>
     public class FightInput : System.IDisposable
     {
-        public const string ResourceName = "FightControls";
+        public const string ResourceName = "FightControls";  // Assets/Resources にあるキー配置ファイルの名前(拡張子なし)
 
-        readonly InputActionAsset asset;
-        readonly bool ownsAsset;
+        readonly InputActionAsset asset;  // 読み込んだキー配置(複製したもの)
+        readonly bool ownsAsset;  // 自分で作った/複製したキー配置か(片付けるときに消す)
 
-        public readonly InputAction Move, Light, Medium, Heavy, Skill, Guard, Dodge, Reset;
+        public readonly InputAction Move, Light, Medium, Heavy, Skill, Guard, Dodge, Reset;  // 各操作。名前は .inputactions の Action 名と同じ
 
+        /// <summary>キー配置ファイルを読み込んで、入力を受け付け始める</summary>
         public FightInput()
         {
             var loaded = Resources.Load<InputActionAsset>(ResourceName);
@@ -56,6 +57,7 @@ namespace Fight3D
         /// <summary>移動の入力。y = 前(相手に近づく)/後ろ、x = 右/左</summary>
         public Vector2 MoveValue => Move.ReadValue<Vector2>();
 
+        /// <summary>入力の受け付けをやめて、複製したキー配置を片付ける</summary>
         public void Dispose()
         {
             asset.Disable();
@@ -88,6 +90,7 @@ namespace Fight3D
             return a;
         }
 
+        /// <summary>ボタン1つ分の操作(キーボードのキーとコントローラーのボタン)を追加する</summary>
         static void AddButton(InputActionMap map, string name, string key, string pad)
         {
             var action = map.AddAction(name, InputActionType.Button);

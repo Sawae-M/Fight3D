@@ -16,6 +16,7 @@ namespace Fight3D
     /// </summary>
     public class TrainingHUD : MonoBehaviour
     {
+        /// <summary>画面に出す数字・文字1つ分の情報</summary>
         class Popup
         {
             public string Text;
@@ -27,12 +28,12 @@ namespace Fight3D
             public Color Color;
         }
 
-        static readonly List<Popup> popups = new List<Popup>();
+        static readonly List<Popup> popups = new List<Popup>();  // 画面に出ている数字・文字
 
-        public Sandbag Sandbag;
-        public FighterController Fighter;
+        public Sandbag Sandbag;  // 表示するサンドバッグ
+        public FighterController Fighter;  // 表示するキャラ
 
-        GUIStyle boxStyle, labelStyle, popupStyle, shadowStyle;
+        GUIStyle boxStyle, labelStyle, popupStyle, shadowStyle;  // 文字や枠の見た目の設定
 
         /// <summary>ダメージ数字(ヒット数が多いほど黄色→赤っぽく)</summary>
         public static void AddPopup(int damage, int hitNumber, Vector3 worldPos)
@@ -48,6 +49,7 @@ namespace Fight3D
             Spawn(text, color, worldPos, 0.7f);
         }
 
+        /// <summary>数字・文字を1つ出して、LitMotion で動かす</summary>
         static void Spawn(string text, Color color, Vector3 worldPos, float size)
         {
             // 同じ場所に重ならないよう少しずらす
@@ -63,8 +65,10 @@ namespace Fight3D
                 .Bind(p, (v, x) => x.Alpha = v);
         }
 
+        /// <summary>消えるときに呼ばれる。出ている数字・文字を消す</summary>
         void OnDestroy() { popups.Clear(); }
 
+        /// <summary>画面の更新ごとに呼ばれる。トレーニング設定のキー(F1 / F2)を受け付ける</summary>
         void Update()
         {
             // トレーニング設定(キーボードの F1 / F2)
@@ -74,6 +78,7 @@ namespace Fight3D
             if (kb.f2Key.wasPressedThisFrame && Fighter != null) Fighter.AddGauge(FighterController.MaxGauge);
         }
 
+        /// <summary>文字の大きさや色の設定を作る(画面の高さに合わせて大きさを変える)</summary>
         void MakeStyles()
         {
             float s = Screen.height / 1080f;
@@ -90,6 +95,7 @@ namespace Fight3D
             shadowStyle.normal.textColor = new Color(0f, 0f, 0f, 0.8f);
         }
 
+        /// <summary>画面に文字や枠を描くときに Unity が呼ぶ</summary>
         void OnGUI()
         {
             MakeStyles();
@@ -101,7 +107,7 @@ namespace Fight3D
             DrawFighterPanel(s);
         }
 
-        // ---- ダメージ数字・文字 ----
+        /// <summary>ダメージ数字・文字を描く(s: 画面の大きさに合わせる倍率)</summary>
         void DrawPopups(float s)
         {
             var cam = Camera.main;
@@ -120,7 +126,7 @@ namespace Fight3D
             }
         }
 
-        // ---- 右上: サンドバッグ ----
+        /// <summary>右上のサンドバッグ情報を描く</summary>
         void DrawSandbagPanel(float s)
         {
             if (Sandbag == null) return;
@@ -143,7 +149,7 @@ namespace Fight3D
             GUI.Label(new Rect(lx, ly, w, lh), $"[F1] ガードする: {guard}", labelStyle);
         }
 
-        // ---- 左上: 操作説明 ----
+        /// <summary>左上の操作説明を描く</summary>
         void DrawHelpPanel(float s)
         {
             float w = 440 * s, x = 20 * s, y = 20 * s;
@@ -167,7 +173,7 @@ namespace Fight3D
             }
         }
 
-        // ---- 下: カゲツのゲージとスキル ----
+        /// <summary>下のカゲツのゲージとスキル状態を描く</summary>
         void DrawFighterPanel(float s)
         {
             if (Fighter == null) return;
@@ -197,12 +203,14 @@ namespace Fight3D
             GUI.Label(new Rect(lx, ly, w, lh), string.IsNullOrEmpty(state) ? " " : $"動作: {state}", labelStyle);
         }
 
+        /// <summary>横長のバー(体力・ゲージ)を描く(ratio: 0〜1 の割合)</summary>
         static void DrawBar(Rect r, float ratio, Color c)
         {
             DrawRect(r, new Color(0.15f, 0.15f, 0.15f));
             DrawRect(new Rect(r.x, r.y, r.width * Mathf.Clamp01(ratio), r.height), c);
         }
 
+        /// <summary>指定した色の四角を描く</summary>
         static void DrawRect(Rect r, Color c)
         {
             var old = GUI.color;

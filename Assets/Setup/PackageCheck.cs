@@ -8,6 +8,7 @@ using UnityEngine;
 public static class Fight3DPackageCheck
 {
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    /// <summary>▶ を押した直後に、ゲーム本体が読み込まれているかを確認する</summary>
     static void Check()
     {
         if (System.Type.GetType("Fight3D.GameBootstrap, Fight3D") != null) return; // OK
@@ -21,10 +22,12 @@ public static class Fight3DPackageCheck
         new GameObject("Fight3D Package Warning").AddComponent<Warning>().Message = msg;
     }
 
+    /// <summary>パッケージが足りないときに画面中央に案内を出す</summary>
     class Warning : MonoBehaviour
     {
-        public string Message;
+        public string Message;  // 表示する案内の文章
 
+        /// <summary>案内の文章を画面に描く</summary>
         void OnGUI()
         {
             var style = new GUIStyle(GUI.skin.box)
