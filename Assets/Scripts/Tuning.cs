@@ -26,6 +26,7 @@ namespace Fight3D
             public const float Radius = 10f;  // [仕様書] 円形の床の半径(m)
             public static readonly Vector3 PlayerStart = new Vector3(0f, 0f, -3f);  // [仮] トレーニングでの自分のキャラの開始位置
             public static readonly Vector3 SandbagStart = new Vector3(0f, 0f, 3f);  // [仕様書] サンドバッグは円の中心から 3m
+            public static readonly Vector3 CpuStart = new Vector3(0f, 0f, 3f);      // [仕様書] 対戦のラウンド開始: 円の中心をはさんで 6m 離れて向き合う(自分は PlayerStart)
         }
 
         /// <summary>カメラ(仕様書「4. カメラ」)</summary>
@@ -56,6 +57,7 @@ namespace Fight3D
             public const float ContactGap = 0.05f;     // [仮] 踏み込みが止まる、相手との隙間(m)
             public const int StaggerFrames = 40;       // [仕様書] 自分が「よろけ」になったとき 40F 動けない
             public const int LaunchFrames = 66;        // [仮] 自分が「浮き」になったときに動けない時間(空中 36F + 着地後 30F)
+            public const int WallHitstunBonus = 6;     // [仮] 壁に押し付けられた状態で攻撃を受けると、のけぞりがこのF だけ長くなる(仕様書「3.」の「少し長く」)
 
             // ウルトゲージ(仕様書「7.」)
             public const float MaxGauge = 100f;        // [仕様書] 最大 100
@@ -130,7 +132,39 @@ namespace Fight3D
 
             // ウルト「大地崩し」
             public const float UltMaxScale = 1.5f;     // [仕様書] 自分の体力が少ないほど威力アップ。最大 1.5倍
-                                                       // [仮の解釈] 倍率 = 1 + 0.5 × 失った体力の割合(体力満タンで 1.0倍、残りわずかで約 1.5倍)
+                                                       // 倍率 = 1 + 0.5 × 失った体力の割合(体力満タンで 1.0倍、残りわずかで約 1.5倍)。2026-11-21 M が確認して仕様書に追記
+        }
+
+        /// <summary>対戦の試合ルール(仕様書「2. 試合のルール」)</summary>
+        public static class Match
+        {
+            public const int RoundSeconds = 99;        // [仕様書] 1ラウンド 99秒
+            public const int RoundsToWin = 2;          // [仕様書] 2ラウンド先取
+            public const int RoundCallFrames = 60;     // [仮] 「ROUND 1」と出ている時間(F)。この間は動けない
+            public const int FightCallFrames = 40;     // [仮] 「FIGHT!」と出ている時間(F)。出た瞬間から動ける
+            public const int RoundEndFrames = 150;     // [仮] K.O. / 時間切れ から次のラウンドまで(F)
+        }
+
+        /// <summary>CPU の強さと動き方(仕様書「13. これから決めること」なので、すべて [仮])</summary>
+        public static class Cpu
+        {
+            public const int ThinkInterval = 18;       // [仮] 次の行動を考えるまでの間(F)。小さいほど手数が多い
+            public const int ThinkJitter = 24;         // [仮] 考える間のばらつき(0〜このF をランダムに足す)
+            public const float AttackRange = 1.9f;     // [仮] この距離(m、体の中心どうし)以内なら通常攻撃を始める
+            public const float KeepRange = 1.5f;       // [仮] これより近いと、たまに少し下がる
+            public const float ReactRange = 3.2f;      // [仮] 相手の技の出始めに反応する距離(m)
+            public const int ReactDelay = 3;           // [仮] 相手の技が出始めてから反応するまで(F)。人間らしい遅れ
+            public const float GuardChance = 0.4f;     // [仮] 相手の技にガードで反応する確率
+            public const float DodgeChance = 0.12f;    // [仮] 相手の技に回避で反応する確率
+            public const float CounterChance = 0.35f;  // [仮] ゴウガが受け止めで反応する確率(使えるとき)
+            public const int GuardHoldFrames = 28;     // [仮] ガードを続ける時間(F)
+            public const float ComboChance = 0.75f;    // [仮] 当たったときに次の技へつなげる確率
+            public const float SkillFinishChance = 0.5f; // [仮] 連続技の最後をスキルにする確率(使えるとき)
+            public const float RangedSkillChance = 0.3f; // [仮] 離れているときに遠くまで届くスキル(影穿ち・岩砕き・剛腕引き)を出す確率
+            public const float BuffChance = 0.25f;     // [仮] カゲツが仮面解放を使う確率(使えるとき、考えるたび)
+            public const float UltRange = 2.3f;        // [仮] ゲージ満タンのとき、この距離以内ならウルトを狙う
+            public const float StrafeChance = 0.35f;   // [仮] 考えるたびに、相手の周りを回り始める確率
+            public const int Seed = 12345;             // [仮] CPU の乱数の種(同じ種なら毎回同じ動きになる)
         }
 
         /// <summary>トレーニング用: サンドバッグが殴ってくる設定(F3)。受け止め・ガード・回避の練習用。すべて [仮]</summary>

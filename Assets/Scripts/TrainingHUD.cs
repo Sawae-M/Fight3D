@@ -12,7 +12,7 @@ namespace Fight3D
     /// - 左上: 操作説明
     /// - 下: 自分のキャラの体力・ウルトゲージ・スキルの状態
     /// - トレーニング設定: F1 = サンドバッグのガード ON/OFF、F2 = ゲージ満タン、F3 = サンドバッグが殴ってくる ON/OFF、
-    ///   F4 = 自分の体力を 100% → 50% → 25% → 10% と切り替え、F5 = キャラ切り替え(カゲツ ⇔ ゴウガ)
+    ///   F4 = 自分の体力を 100% → 50% → 25% → 10% と切り替え、F5 = キャラ切り替え(カゲツ ⇔ ゴウガ)、F6 = CPU対戦へ
     /// (仮の表示なので Unity の古い GUI 機能 OnGUI で簡単に描いている。数字の動きは LitMotion)
     /// </summary>
     public class TrainingHUD : MonoBehaviour
@@ -34,7 +34,8 @@ namespace Fight3D
         public Sandbag Sandbag;  // 表示するサンドバッグ
         public FighterController Fighter;  // 表示するキャラ
 
-        GUIStyle boxStyle, labelStyle, popupStyle, shadowStyle;  // 文字や枠の見た目の設定
+        GUIStyle boxStyle, labelStyle;  // 枠と文字の見た目の設定
+        static GUIStyle popupStyle, shadowStyle;  // ダメージ数字の見た目の設定(対戦画面でも使う)
 
         /// <summary>ダメージ数字(ヒット数が多いほど黄色→赤っぽく)</summary>
         public static void AddPopup(int damage, int hitNumber, Vector3 worldPos)
@@ -80,6 +81,7 @@ namespace Fight3D
             if (kb.f3Key.wasPressedThisFrame && Sandbag != null) Sandbag.AttackEnabled = !Sandbag.AttackEnabled;
             if (kb.f4Key.wasPressedThisFrame && Fighter != null) Fighter.SetHpRatio(NextHpStep());
             if (kb.f5Key.wasPressedThisFrame) GameBootstrap.SwitchCharacter();
+            if (kb.f6Key.wasPressedThisFrame) GameBootstrap.SwitchMode();
         }
 
         /// <summary>F4 で次に選ぶ体力の割合: 今の体力より少ない段階のうち一番近いもの。一番下まで来たら 100% に戻る</summary>
@@ -100,6 +102,11 @@ namespace Fight3D
             boxStyle = new GUIStyle(GUI.skin.box);
             labelStyle = new GUIStyle(GUI.skin.label) { fontSize = Mathf.RoundToInt(24 * s), richText = true };
             labelStyle.normal.textColor = Color.white;
+        }
+
+        /// <summary>ダメージ数字の文字の設定を作る(GUI.skin は OnGUI の中でしか使えないので、描く直前に作る)</summary>
+        static void MakePopupStyles(float s)
+        {
             popupStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = Mathf.RoundToInt(56 * s),
@@ -122,9 +129,10 @@ namespace Fight3D
             DrawFighterPanel(s);
         }
 
-        /// <summary>ダメージ数字・文字を描く(s: 画面の大きさに合わせる倍率)</summary>
-        void DrawPopups(float s)
+        /// <summary>ダメージ数字・文字を描く(s: 画面の大きさに合わせる倍率)。対戦画面(BattleHUD)からも呼ぶ</summary>
+        public static void DrawPopups(float s)
         {
+            MakePopupStyles(s);
             var cam = Camera.main;
             if (cam == null) return;
             foreach (var p in popups)
@@ -188,6 +196,7 @@ namespace Fight3D
                 "[F2] ゲージ満タン",
                 "[F4] 自分の体力を減らす",
                 "[F5] キャラ切り替え",
+                "[F6] CPU対戦へ",
             });
             float lh = 34 * s;
             GUI.Box(new Rect(x, y, w, lh * lines.Count + 24 * s), GUIContent.none, boxStyle);

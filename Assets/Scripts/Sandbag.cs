@@ -38,7 +38,7 @@ namespace Fight3D
     /// - 剛腕引きでつかまれると、引き寄せられる
     /// 殴られたときの揺れ・光り・浮きの見た目は LitMotion で動かしている。
     /// </summary>
-    public class Sandbag : MonoBehaviour
+    public class Sandbag : MonoBehaviour, IFightTarget
     {
         // 数値(よろけ・浮きの時間など)は Tuning.cs の Tuning.Sandbag にある
 
@@ -47,6 +47,7 @@ namespace Fight3D
         public int LastDamage { get; private set; }  // 直前のダメージ
         public int ComboDamage { get; private set; }  // 今の連続技の合計ダメージ
         public int ComboHits { get; private set; }  // 今の連続技のヒット数
+        public float BodyRadius => Tuning.Sandbag.BodyRadius;  // 体の太さ(半径 m。値は Tuning.cs)
 
         /// <summary>トレーニング設定: ガードする</summary>
         public bool GuardEnabled;
@@ -237,7 +238,7 @@ namespace Fight3D
                     // 殴る(少し離れていても、構えた時の距離 + 0.3m までは届く)
                     if (DistanceTo(Opponent.transform) <= Tuning.SandbagAttack.Range + 0.3f)
                     {
-                        Opponent.ReceiveHit(new HitInfo
+                        Opponent.TakeHit(new HitInfo
                         {
                             Damage = Tuning.SandbagAttack.Damage,
                             Hitstun = Tuning.SandbagAttack.Hitstun,

@@ -51,7 +51,7 @@ namespace Fight3D
             {
                 Vector3 to = target.position - transform.position;
                 to.y = 0f;
-                if (to.magnitude <= Tuning.Gouga.ShockwaveHalfWidth + Tuning.Sandbag.BodyRadius)
+                if (to.magnitude <= Tuning.Gouga.ShockwaveHalfWidth + owner.OpponentBodyRadius)
                 {
                     hasHit = true;
                     owner.ShockwaveHit(move);
