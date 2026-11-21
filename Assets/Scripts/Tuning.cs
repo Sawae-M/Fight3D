@@ -127,15 +127,15 @@ namespace Fight3D
         // ---- 通常攻撃 [仕様書] ダメージ・出るまで・当たっている時間・終わりの隙・リーチ / [仮] のけぞり ----
         /// <summary>弱(U)</summary>
         public static readonly MoveData Light = new MoveData
-        { Name = "弱", Damage = 30, Startup = 5, Active = 3, Recovery = 10, Reach = 1.6f, Hitstun = 16, ComboRank = 0, Pose = ThrustPose };
+        { Name = "弱攻撃", Damage = 30, Startup = 5, Active = 3, Recovery = 10, Reach = 1.6f, Hitstun = 16, ComboRank = 0, Pose = ThrustPose };
 
         /// <summary>中(I)</summary>
         public static readonly MoveData Medium = new MoveData
-        { Name = "中", Damage = 60, Startup = 9, Active = 4, Recovery = 18, Reach = 2.0f, Hitstun = 22, ComboRank = 1, Pose = SlashPose };
+        { Name = "中攻撃", Damage = 60, Startup = 9, Active = 4, Recovery = 18, Reach = 2.0f, Hitstun = 22, ComboRank = 1, Pose = SlashPose };
 
         /// <summary>強(O)</summary>
         public static readonly MoveData Heavy = new MoveData
-        { Name = "強", Damage = 100, Startup = 15, Active = 5, Recovery = 28, Reach = 2.4f, Hitstun = 28, ComboRank = 2, Pose = OverheadPose };
+        { Name = "強攻撃", Damage = 100, Startup = 15, Active = 5, Recovery = 28, Reach = 2.4f, Hitstun = 28, ComboRank = 2, Pose = OverheadPose };
 
         // ---- スキル1「影穿ち」(P) ----
         // [仕様書] ダメージ 50(3回目 70)、出るまで 8F、リーチ 3.5m、3回目は 1.5m 踏み込み + よろけ

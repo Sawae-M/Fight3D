@@ -157,11 +157,17 @@ namespace Fight3D
             {
                 "<b>トレーニング(カゲツ)</b>",
                 "移動: WASD / 左スティック",
-                "弱 中 強: U I O / X Y B",
-                "影穿ち: P   三日月払い: W+P",
-                "仮面解放: S+P   冥月斬: O+P",
-                "ガード: J   回避: K(+方向)",
-                "リセット: R   [F2] ゲージ満タン",
+                "弱攻撃: U / X",
+                "中攻撃: I / Y",
+                "強攻撃: O / B",
+                "影穿ち: P",
+                "三日月払い: W+P",
+                "仮面解放: S+P",
+                "冥月斬: O+P",
+                "ガード: J",
+                "回避: K(+方向)",
+                "リセット: R",
+                "[F2] ゲージ満タン",
             };
             float lh = 34 * s;
             GUI.Box(new Rect(x, y, w, lh * lines.Length + 24 * s), GUIContent.none, boxStyle);
@@ -178,7 +184,7 @@ namespace Fight3D
         {
             if (Fighter == null) return;
             var sk = Fighter.Skills;
-            float w = 900 * s, h = 130 * s, x = (Screen.width - w) / 2f, y = Screen.height - h - 20 * s;
+            float w = 900 * s, h = 200 * s, x = (Screen.width - w) / 2f, y = Screen.height - h - 20 * s;
             GUI.Box(new Rect(x, y, w, h), GUIContent.none, boxStyle);
             float lx = x + 20 * s, ly = y + 10 * s, lh = 34 * s;
 
@@ -195,8 +201,10 @@ namespace Fight3D
             string kamen = sk.KamenActive
                 ? $"<color=#ff6070>仮面解放中 {sk.KamenLeft / 60f:0.0}秒 呪印{sk.CurseMarks}</color>"
                 : (sk.KamenCooldownLeft > 0 ? $"仮面解放: {sk.KamenCooldownLeft / 60f:0.0}秒" : "仮面解放: OK");
-            GUI.Label(new Rect(lx, ly, w, lh), $"{kage}    {mika}    {kamen}", labelStyle);
-            ly += lh;
+            // 見やすいように 1行に1つずつ
+            GUI.Label(new Rect(lx, ly, w, lh), kage, labelStyle); ly += lh;
+            GUI.Label(new Rect(lx, ly, w, lh), mika, labelStyle); ly += lh;
+            GUI.Label(new Rect(lx, ly, w, lh), kamen, labelStyle); ly += lh;
 
             string state = Fighter.CurrentMoveName;
             if (Fighter.IsInvincible) state += " (無敵)";
