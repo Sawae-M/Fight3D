@@ -4,13 +4,13 @@ using UnityEngine;
 namespace Fight3D
 {
     /// <summary>
-    /// カゲツを操作するクラス。
+    /// 自分のキャラ(カゲツ・ゴウガ共通)を操作するクラス。キャラごとの違いは Kit(CharacterKit)に聞く。
     /// - WASD / 左スティック: 移動(W=相手に近づく、S=離れる、A/D=相手の周りを回る)
     /// - U / I / O: 弱 / 中 / 強(当たっていれば 弱→中→強 とつながる。スキルにもつながる)
-    /// - P: 影穿ち / W+P: 三日月払い / S+P: 仮面解放 / O+P 同時押し: ウルト「冥月斬」
+    /// - P / W+P / S+P: スキル1〜3 / O+P 同時押し: ウルト
     /// - J: ガード(押している間) / K: 回避ステップ
     /// - 技の終わり際 8F 以内に押したボタンは、技が終わった瞬間に出る(先行入力)
-    /// - パッシブ「連刃」: 2ヒット目から1ヒットごとに +3%(最大 +24%)
+    /// - 攻撃を受ける(ReceiveHit): トレーニングでサンドバッグが殴ってくるときに使う
     /// ゲームの進行は FixedUpdate(1秒に60回)、見た目は Update で動かす。
     /// </summary>
     public class FighterController : MonoBehaviour
@@ -19,19 +19,22 @@ namespace Fight3D
 
         public Transform Target;            // 相手(今はサンドバッグ)
         public Sandbag TargetSandbag;  // 相手のサンドバッグ(攻撃を当てる先)
-        public Transform SwordPivot;        // 剣の支点(見た目用)
+        public Transform SwordPivot;        // 剣(ゴウガは右腕)の支点(見た目用)
         public Vector3 StartPosition;  // リセットで戻る位置
         public CameraRig CameraRig;         // リセット時にカメラを瞬間移動させる用
 
         // ---- 外から見る用(画面表示など) ----
         public float Gauge { get; private set; }  // 今のウルトゲージ(0〜100)
-        public KagetsuSkills Skills { get; } = new KagetsuSkills();  // カゲツのスキルの状態
+        public CharacterKit Kit { get; set; } = new KagetsuSkills();  // キャラごとの設定とスキルの状態(作った直後に GameBootstrap が入れる)
+        public int Hp { get; private set; }  // 今の体力
+        public int MaxHp => Kit.MaxHp;  // 最大体力(キャラごと。値は Tuning.cs)
+        public bool InHitstun => stunLeft > 0;  // 攻撃を受けて動けない時間か
         public bool IsGuarding { get; private set; }  // ガード中か
         public bool IsDodging => dodgeFrame > 0;  // 回避中か
         public bool IsInvincible => dodgeFrame >= Tuning.Fighter.DodgeInvulnStart && dodgeFrame <= Tuning.Fighter.DodgeInvulnEnd;  // 無敵中か(回避の途中)
         public int DodgeCooldownLeft => dodgeCooldown;  // 回避が次に使えるまでの残り(F)
-        public string CurrentMoveName => current != null ? current.Name : (IsDodging ? "回避" : (IsGuarding ? "ガード" : ""));  // 今の動作の名前(画面表示用)
-        public int LastComboBonusPercent { get; private set; }  // 直前のヒットの連刃ボーナス(%)
+        public string CurrentMoveName => stunLeft > 0 ? "やられ" : (current != null ? current.Name : (IsDodging ? "回避" : (IsGuarding ? "ガード" : "")));  // 今の動作の名前(画面表示用)
+        public int LastComboBonusPercent { get; private set; }  // 直前のヒットのダメージ倍率のボーナス(%)。カゲツは連刃、ゴウガは不屈など
 
         // ---- 技の状態 ----
         MoveData current;                   // 今出している技(null なら出していない)
@@ -45,6 +48,10 @@ namespace Fight3D
         int bufferLeft;  // 先行入力が消えるまでの残り(F)
         int hitstopLeft;  // ヒットストップの残り(F)。この間は時間が止まる
         int tick;                           // 経過フレーム
+
+        // ---- 攻撃を受けたとき ----
+        int stunLeft;  // 攻撃を受けて動けない残り(F)
+        int blockLeft;  // ガードして固まっている残り(F)
 
         // ---- 回避 ----
         int dodgeFrame;
@@ -71,9 +78,10 @@ namespace Fight3D
             input = new FightInput();
         }
 
-        /// <summary>最初のフレームの前に1回だけ呼ばれる。待機の呼吸アニメと仮面の色の準備をする</summary>
+        /// <summary>最初のフレームの前に1回だけ呼ばれる。体力を満タンにし、待機の呼吸アニメと仮面の色の準備をする</summary>
         void Start()
         {
+            Hp = MaxHp;
             visual = transform.Find("Visual");
             if (visual != null)
             {
@@ -152,9 +160,13 @@ namespace Fight3D
 
             if (hitstopLeft > 0) { hitstopLeft--; return; }
 
-            // スキルの時間を進める。仮面解放が終わったら呪印をまとめて爆発させる
-            if (Skills.Tick(out int marks) && marks > 0) CurseBurst(marks);
+            // スキルの時間を進める(カゲツは仮面解放が終わると呪印が爆発する)
+            Kit.Tick(this);
             if (dodgeCooldown > 0) dodgeCooldown--;
+
+            // 攻撃を受けて動けない間 / ガードして固まっている間は何もできない
+            if (stunLeft > 0) { stunLeft--; FaceTarget(); return; }
+            if (blockLeft > 0) { blockLeft--; IsGuarding = true; FaceTarget(); return; }
 
             TryStartBuffered();
 
@@ -201,7 +213,7 @@ namespace Fight3D
         bool CanStart(Command cmd)
         {
             if (dodgeFrame > 0) return false;
-            if (!Skills.CanUse(cmd)) return false;
+            if (!Kit.CanUse(cmd)) return false;
             if (cmd == Command.Ult && Gauge < Tuning.Fighter.MaxGauge) return false;
             if (current == null) return true;
 
@@ -215,12 +227,10 @@ namespace Fight3D
             // ここから下は「当たった技をキャンセルしてつなげる」ルール
             if (current.IsNormal)
             {
-                if (cmd <= Command.Heavy) return KagetsuMoves.Normal(cmd).ComboRank > current.ComboRank; // 弱→中→強
+                if (cmd <= Command.Heavy) return Kit.Normal(cmd).ComboRank > current.ComboRank; // 弱→中→強
                 return true; // 通常技 → スキル・ウルト
             }
-            if (currentCommand == Command.Skill1) return cmd == Command.Skill1 || cmd == Command.Ult; // 影穿ちの連続
-            if (currentCommand == Command.Skill2) return cmd == Command.Ult;
-            return false;
+            return Kit.CanCancelSkill(currentCommand, cmd); // スキルからのつながりはキャラごと(カゲツの影穿ちの連続など)
         }
 
         /// <summary>ボタンに対応する技を選んで出し始める</summary>
@@ -231,16 +241,17 @@ namespace Fight3D
             MoveData move;
             switch (cmd)
             {
-                case Command.Skill1: move = Skills.NextKageUgachi(); break;
-                case Command.Skill2: move = KagetsuMoves.MikazukiBarai; break;
-                case Command.Skill3: move = KagetsuMoves.KamenKaihou; break;
-                case Command.Ult: move = KagetsuMoves.MeigetsuZan; Gauge = 0f; break;
-                default: move = KagetsuMoves.Normal(cmd); break;
+                case Command.Skill1:
+                case Command.Skill2:
+                case Command.Skill3: move = Kit.SkillMove(cmd); break;
+                case Command.Ult: move = Kit.UltMove; Gauge = 0f; break;
+                default: move = Kit.Normal(cmd); break;
             }
 
             BeginMove(move, cmd);
-            Skills.OnMoveStarted(cmd);
-            if (cmd == Command.Skill3) TrainingHUD.AddTextPopup("仮面解放", new Color(0.9f, 0.3f, 0.4f), transform.position + Vector3.up * 2.3f);
+            Kit.OnMoveStarted(cmd);
+            // スキル3(仮面解放・受け止め)は、出した瞬間に名前を出す
+            if (cmd == Command.Skill3) TrainingHUD.AddTextPopup(move.Name, new Color(0.9f, 0.3f, 0.4f), transform.position + Vector3.up * 2.3f);
         }
 
         /// <summary>技の状態をリセットして、指定した技の1F目から始める</summary>
@@ -249,7 +260,7 @@ namespace Fight3D
             current = move;
             currentCommand = cmd;
             attackFrame = 0;
-            curStartup = Skills.ScaleStartup(move.Startup);
+            curStartup = Kit.ScaleStartup(move.Startup);
             contacted = false;
             connected = false;
             lungeTravelled = 0f;
@@ -259,7 +270,7 @@ namespace Fight3D
         /// <summary>今の技を終わらせる</summary>
         void EndMove()
         {
-            Skills.OnMoveEnded(currentCommand);
+            Kit.OnMoveEnded(currentCommand);
             current = null;
         }
 
@@ -291,8 +302,17 @@ namespace Fight3D
                 {
                     if (sh.Frame == attackFrame)
                     {
-                        Strike(sh.Damage, sh.Hitstun, sh.Effect, false, true, Tuning.Fighter.RushHitstopFrames);
+                        Strike(sh.Damage, sh.Hitstun, sh.Effect, false, true, Tuning.Fighter.RushHitstopFrames, currentCommand);
                     }
+                }
+            }
+            else if (current.SpawnsShockwave)
+            {
+                // 岩砕き: 出るまでの時間が終わった瞬間に衝撃波を出す(当たるかどうかは衝撃波が調べる)
+                if (attackFrame == curStartup + 1)
+                {
+                    Vector3 forward = ForwardToTarget();
+                    Shockwave.Spawn(this, current, transform.position + forward * (Tuning.Fighter.BodyRadius + 0.3f), forward, Target);
                 }
             }
             else
@@ -300,14 +320,22 @@ namespace Fight3D
                 bool active = attackFrame > curStartup && attackFrame <= curStartup + current.Active;
                 if (active && !contacted && current.Damage > 0 && TargetIsInReach(current.Reach, current.Arc))
                 {
-                    var outcome = Strike(current.Damage, current.Hitstun, current.Effect, current.GuardBreak, false, Tuning.Fighter.HitstopFrames);
+                    // つかみ技はガードできない
+                    var outcome = Strike(current.Damage, current.Hitstun, current.Effect, current.GuardBreak, current.IsGrab, Tuning.Fighter.HitstopFrames, currentCommand, current.IsGrab);
                     contacted = true;
                     if (outcome == HitOutcome.Hit || outcome == HitOutcome.GuardCrushed) connected = true;
 
-                    // ウルトが当たったら連続斬りの演出へ
-                    if (current == KagetsuMoves.MeigetsuZan && outcome == HitOutcome.Hit)
+                    // 剛腕引き: つかんだら相手を目の前まで引き寄せる
+                    if (current.IsGrab && outcome == HitOutcome.Hit && TargetSandbag != null)
                     {
-                        BeginMove(KagetsuMoves.MeigetsuZanRush, Command.Ult);
+                        Vector3 dest = transform.position + ForwardToTarget() * Tuning.Gouga.PullDistance;
+                        TargetSandbag.StartPull(dest, Tuning.Gouga.PullFrames);
+                    }
+
+                    // ウルトが当たったら連続攻撃の演出へ
+                    if (current == Kit.UltMove && outcome == HitOutcome.Hit)
+                    {
+                        BeginMove(Kit.UltRush, Command.Ult);
                         connected = true;
                         return;
                     }
@@ -317,15 +345,19 @@ namespace Fight3D
             if (attackFrame >= CurrentTotalFrames()) EndMove();
         }
 
-        /// <summary>攻撃を当てる(連刃のボーナスとゲージもここで計算)</summary>
-        HitOutcome Strike(int baseDamage, int hitstun, HitEffect effect, bool guardBreak, bool unblockable, int hitstop)
+        /// <summary>
+        /// 攻撃を当てる(キャラごとのダメージ倍率とゲージもここで計算)。
+        /// source = どのボタンの技か(ウルトならゲージがたまらない)、isGrab = つかみ技か
+        /// </summary>
+        HitOutcome Strike(int baseDamage, int hitstun, HitEffect effect, bool guardBreak, bool unblockable, int hitstop, Command source, bool isGrab = false)
         {
             if (TargetSandbag == null) return HitOutcome.Hit;
 
-            // パッシブ「連刃」: 2ヒット目から1ヒットごとに +3%、最大 +24%
+            // キャラごとのダメージ倍率(カゲツ = 連刃、ゴウガ = 不屈・大地崩しの体力ボーナス)
             int hitNumber = TargetSandbag.NextComboHitNumber();
-            int bonusPercent = Mathf.Min((hitNumber - 1) * Tuning.Kagetsu.RenjinBonusPerHit, Tuning.Kagetsu.RenjinMaxBonus);
-            int damage = Mathf.RoundToInt(baseDamage * (1f + bonusPercent / 100f));
+            float scale = Kit.DamageScale(hitNumber, source, this);
+            int bonusPercent = Mathf.RoundToInt((scale - 1f) * 100f);
+            int damage = Mathf.RoundToInt(baseDamage * scale);
 
             var result = TargetSandbag.TakeHit(new HitInfo
             {
@@ -335,15 +367,17 @@ namespace Fight3D
                 Effect = effect,
                 GuardBreak = guardBreak,
                 Unblockable = unblockable,
+                IsGrab = isGrab,
+                IsUlt = source == Command.Ult,
                 AttackerPosition = transform.position,
             });
 
             // ウルトの攻撃ではゲージをためない(仕様書 2026-11-21 追加)
-            bool gainGauge = Tuning.Fighter.UltGainsGauge || currentCommand != Command.Ult || current == null;
+            bool gainGauge = Tuning.Fighter.UltGainsGauge || source != Command.Ult;
             if (result.Outcome == HitOutcome.Hit)
             {
                 LastComboBonusPercent = bonusPercent;
-                Skills.OnHit();
+                Kit.OnHit();
                 if (gainGauge) AddGauge(result.DamageDealt * Tuning.Fighter.GaugeOnHitRate); // 与えたダメージの 10%
             }
             else if (gainGauge)
@@ -354,12 +388,97 @@ namespace Fight3D
             return result.Outcome;
         }
 
-        /// <summary>仮面解放の終わり: 呪印 1つにつき 15 ダメージ(連刃も効く)</summary>
-        void CurseBurst(int marks)
+        /// <summary>技とは別に、必ず当たる追加ダメージを与える(カゲツの呪印の爆発など)。ダメージ倍率は効く</summary>
+        public void BonusStrike(int damage, int hitstun, int hitstop, Command source)
         {
-            TrainingHUD.AddTextPopup($"呪印 ×{marks}", new Color(0.8f, 0.3f, 1f),
-                (Target != null ? Target.position : transform.position) + Vector3.up * 2.6f);
-            Strike(marks * Tuning.Kagetsu.CurseDamagePerMark, Tuning.Kagetsu.CurseBurstHitstun, HitEffect.Normal, false, true, Tuning.Kagetsu.CurseBurstHitstop);
+            Strike(damage, hitstun, HitEffect.Normal, false, true, hitstop, source);
+        }
+
+        /// <summary>岩砕きの衝撃波が相手に届いたとき(Shockwave から呼ばれる)</summary>
+        public void ShockwaveHit(MoveData move)
+        {
+            Strike(move.Damage, move.Hitstun, move.Effect, move.GuardBreak, false, Tuning.Fighter.HitstopFrames, Command.Skill1);
+        }
+
+        /// <summary>相手の頭の上に文字を出す</summary>
+        public void PopupAtTarget(string text, Color color)
+        {
+            TrainingHUD.AddTextPopup(text, color, (Target != null ? Target.position : transform.position) + Vector3.up * 2.6f);
+        }
+
+        /// <summary>
+        /// 攻撃を受ける(トレーニングでサンドバッグが殴ってきたとき)。
+        /// 回避の無敵中 → よける / 受け止めの構え中 → 反撃 / ガード中 → 防ぐ / それ以外 → ダメージを受けて動けなくなる
+        /// </summary>
+        public HitResult ReceiveHit(HitInfo info)
+        {
+            var result = new HitResult();
+            Vector3 popupPos = transform.position + Vector3.up * 2.3f;
+
+            // 回避の無敵中はよける
+            if (IsInvincible)
+            {
+                TrainingHUD.AddTextPopup("回避!", new Color(0.6f, 1f, 0.8f), popupPos);
+                result.Outcome = HitOutcome.Dodged;
+                return result;
+            }
+
+            // 受け止めの構え中: ダメージを受けずに反撃(つかみ技とウルトは受け止められない)
+            if (current != null && current.IsCounterStance && attackFrame <= current.Active && Kit.CounterMove != null && !info.IsGrab && !info.IsUlt)
+            {
+                TrainingHUD.AddTextPopup("受け止め!", new Color(1f, 0.8f, 0.3f), popupPos);
+                BeginMove(Kit.CounterMove, Command.Skill3);
+                connected = true;
+                result.Outcome = HitOutcome.Countered;
+                return result;
+            }
+
+            // ガード中: ダメージ 0、少し固まる、ゲージ +3
+            if (IsGuarding && !info.Unblockable)
+            {
+                blockLeft = Mathf.Max(Tuning.Sandbag.MinBlockstun, Mathf.RoundToInt(info.Hitstun * Tuning.Sandbag.BlockstunScale));
+                AddGauge(Tuning.Fighter.GaugeOnGuarded);
+                hitstopLeft = info.Hitstop;
+                TrainingHUD.AddTextPopup("GUARD", new Color(0.5f, 0.8f, 1f), popupPos);
+                result.Outcome = HitOutcome.Guarded;
+                return result;
+            }
+
+            // ヒット: 体力が減る。体力が 0 になる攻撃でも、ゴウガは1回だけ体力 1 で耐える(不屈)
+            int damage = info.Damage;
+            if (damage >= Hp && Hp > 0 && Kit.TrySurviveLethal())
+            {
+                damage = Hp - 1;
+                TrainingHUD.AddTextPopup("不屈!", new Color(1f, 0.6f, 0.2f), popupPos + Vector3.up * 0.4f);
+            }
+            Hp = Mathf.Max(0, Hp - damage);  // トレーニングなので 0 になっても倒れない(R で元に戻る)
+            AddGauge(damage * Tuning.Fighter.GaugeOnTakenRate);  // 受けたダメージの 8%
+
+            // 出していた技・回避・先行入力はすべて取り消し
+            if (current != null) EndMove();
+            dodgeFrame = 0;
+            bufferedCommand = null;
+            dodgeBuffered = false;
+            IsGuarding = false;
+            switch (info.Effect)
+            {
+                case HitEffect.Stagger: stunLeft = Tuning.Fighter.StaggerFrames; break;
+                case HitEffect.Launch: stunLeft = Tuning.Fighter.LaunchFrames; break;
+                default: stunLeft = info.Hitstun; break;
+            }
+            hitstopLeft = info.Hitstop;
+            TrainingHUD.AddTextPopup(damage.ToString(), new Color(1f, 0.4f, 0.4f), popupPos);
+
+            result.Outcome = HitOutcome.Hit;
+            result.DamageDealt = damage;
+            result.ComboHit = 1;
+            return result;
+        }
+
+        /// <summary>トレーニング用: 体力を最大体力の ratio 倍にする(F4。不屈・大地崩しの確認用)</summary>
+        public void SetHpRatio(float ratio)
+        {
+            Hp = Mathf.Clamp(Mathf.RoundToInt(MaxHp * ratio), 1, MaxHp);
         }
 
         /// <summary>ウルトゲージを増やす(0〜100 の範囲に収める)</summary>
@@ -384,7 +503,7 @@ namespace Fight3D
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             Vector3 dir = (forward * v + right * h).normalized;
             // 前に倒しているときは前歩き速度、それ以外は後ろ・横歩き速度。倒し具合で遅くもなる
-            float speed = (v > Mathf.Abs(h) ? Tuning.Fighter.ForwardSpeed : Tuning.Fighter.OtherSpeed) * Mathf.Clamp01(stick.magnitude) * Skills.SpeedScale;
+            float speed = (v > Mathf.Abs(h) ? Tuning.Fighter.ForwardSpeed : Tuning.Fighter.OtherSpeed) * Mathf.Clamp01(stick.magnitude) * Kit.SpeedScale;
             MoveTo(transform.position + dir * speed * Time.fixedDeltaTime);
         }
 
@@ -497,7 +616,10 @@ namespace Fight3D
             dodgeFrame = 0;
             dodgeCooldown = 0;
             IsGuarding = false;
-            Skills.ResetAll();
+            stunLeft = 0;
+            blockLeft = 0;
+            Kit.ResetAll();
+            Hp = MaxHp;
             transform.position = StartPosition;
             if (TargetSandbag != null) TargetSandbag.ResetState();
             FaceTarget();
@@ -505,12 +627,12 @@ namespace Fight3D
         }
 
         // ================================================================
-        //  見た目(剣の振り・回避の傾き・仮面の光)
+        //  見た目(剣・腕の振り・回避の傾き・仮面の光)
         // ================================================================
-        static readonly Vector3 RestPos = new Vector3(0.38f, 1.3f, 0.05f);
-        static readonly Quaternion RestRot = Quaternion.Euler(45f, 15f, 0f);  // 構えの剣の向き(前下がり)
-        static readonly Quaternion GuardRot = Quaternion.Euler(-15f, -80f, 0f);  // ガードの剣の向き(体の前で横に)
-        static readonly Vector3 GuardPos = new Vector3(0.3f, 1.45f, 0.35f);  // ガードの剣の支点の位置
+        Vector3 RestPos => Kit.RestPos;  // 構えの剣(腕)の支点の位置(キャラごと)
+        Quaternion RestRot => Kit.RestRot;  // 構えの剣(腕)の向き
+        Quaternion GuardRot => Kit.GuardRot;  // ガードの剣(腕)の向き
+        Vector3 GuardPos => Kit.GuardPos;  // ガードの剣(腕)の支点の位置
 
         /// <summary>見た目をまとめて更新する</summary>
         void UpdateVisuals()
@@ -520,7 +642,7 @@ namespace Fight3D
             UpdateMask();
         }
 
-        /// <summary>今の技の何F目かに合わせて剣の向きと位置を動かす(見た目だけ)</summary>
+        /// <summary>今の技の何F目かに合わせて剣(腕)の向きと位置を動かす(見た目だけ)</summary>
         void UpdateSwordPose()
         {
             if (SwordPivot == null) return;
@@ -600,7 +722,7 @@ namespace Fight3D
         void UpdateMask()
         {
             if (maskRenderer == null) return;
-            bool on = Skills.KamenActive;
+            bool on = Kit is KagetsuSkills kagetsu && kagetsu.KamenActive;  // 仮面があるのはカゲツだけ
             if (on == kamenVisualOn) return;
             kamenVisualOn = on;
 

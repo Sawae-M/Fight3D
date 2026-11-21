@@ -10,8 +10,9 @@ namespace Fight3D
     /// - サンドバッグの上に出るダメージ数字・文字(GUARD など)
     /// - 右上: サンドバッグの情報(体力・直前のダメージ・連続技・状態)
     /// - 左上: 操作説明
-    /// - 下: カゲツのウルトゲージとスキルの状態
-    /// - トレーニング設定: F1 = サンドバッグのガード ON/OFF、F2 = ゲージ満タン
+    /// - 下: 自分のキャラの体力・ウルトゲージ・スキルの状態
+    /// - トレーニング設定: F1 = サンドバッグのガード ON/OFF、F2 = ゲージ満タン、F3 = サンドバッグが殴ってくる ON/OFF、
+    ///   F4 = 自分の体力を 100% → 50% → 25% → 10% と切り替え、F5 = キャラ切り替え(カゲツ ⇔ ゴウガ)
     /// (仮の表示なので Unity の古い GUI 機能 OnGUI で簡単に描いている。数字の動きは LitMotion)
     /// </summary>
     public class TrainingHUD : MonoBehaviour
@@ -68,14 +69,28 @@ namespace Fight3D
         /// <summary>消えるときに呼ばれる。出ている数字・文字を消す</summary>
         void OnDestroy() { popups.Clear(); }
 
-        /// <summary>画面の更新ごとに呼ばれる。トレーニング設定のキー(F1 / F2)を受け付ける</summary>
+        /// <summary>画面の更新ごとに呼ばれる。トレーニング設定のキー(F1〜F5)を受け付ける</summary>
         void Update()
         {
-            // トレーニング設定(キーボードの F1 / F2)
+            // トレーニング設定(キーボードの F1〜F5)
             var kb = Keyboard.current;
             if (kb == null) return;
             if (kb.f1Key.wasPressedThisFrame && Sandbag != null) Sandbag.GuardEnabled = !Sandbag.GuardEnabled;
             if (kb.f2Key.wasPressedThisFrame && Fighter != null) Fighter.AddGauge(Tuning.Fighter.MaxGauge);
+            if (kb.f3Key.wasPressedThisFrame && Sandbag != null) Sandbag.AttackEnabled = !Sandbag.AttackEnabled;
+            if (kb.f4Key.wasPressedThisFrame && Fighter != null) Fighter.SetHpRatio(NextHpStep());
+            if (kb.f5Key.wasPressedThisFrame) GameBootstrap.SwitchCharacter();
+        }
+
+        /// <summary>F4 で次に選ぶ体力の割合: 今の体力より少ない段階のうち一番近いもの。一番下まで来たら 100% に戻る</summary>
+        float NextHpStep()
+        {
+            float now = Fighter.MaxHp > 0 ? (float)Fighter.Hp / Fighter.MaxHp : 1f;  // 今の体力の割合
+            foreach (float step in Tuning.Training.HpSteps)
+            {
+                if (step < now - 0.001f) return step;  // 0.001 は計算の誤差のぶん
+            }
+            return Tuning.Training.HpSteps[0];
         }
 
         /// <summary>文字の大きさや色の設定を作る(画面の高さに合わせて大きさを変える)</summary>
@@ -131,7 +146,7 @@ namespace Fight3D
         {
             if (Sandbag == null) return;
             float w = 440 * s, x = Screen.width - w - 20 * s, y = 20 * s;
-            GUI.Box(new Rect(x, y, w, 330 * s), GUIContent.none, boxStyle);
+            GUI.Box(new Rect(x, y, w, 366 * s), GUIContent.none, boxStyle);
             float lx = x + 20 * s, ly = y + 12 * s, lh = 36 * s;
 
             GUI.Label(new Rect(lx, ly, w, lh), "<b>サンドバッグ</b>", labelStyle);
@@ -143,34 +158,39 @@ namespace Fight3D
             GUI.Label(new Rect(lx, ly, w, lh), $"直前のダメージ: <b>{Sandbag.LastDamage}</b>", labelStyle); ly += lh;
             GUI.Label(new Rect(lx, ly, w, lh), $"連続技の合計: <b>{Sandbag.ComboDamage}</b>  ({Sandbag.ComboHits} ヒット)", labelStyle); ly += lh;
             int bonus = Fighter != null ? Fighter.LastComboBonusPercent : 0;
-            GUI.Label(new Rect(lx, ly, w, lh), $"連刃ボーナス: +{bonus}%", labelStyle); ly += lh;
+            string bonusLabel = Fighter != null ? Fighter.Kit.BonusLabel : "ボーナス";
+            GUI.Label(new Rect(lx, ly, w, lh), $"{bonusLabel}: +{bonus}%", labelStyle); ly += lh;
             GUI.Label(new Rect(lx, ly, w, lh), $"状態: {Sandbag.StateText}", labelStyle); ly += lh;
             string guard = Sandbag.GuardEnabled ? "<color=#7fd0ff>ON</color>" : "OFF";
-            GUI.Label(new Rect(lx, ly, w, lh), $"[F1] ガードする: {guard}", labelStyle);
+            GUI.Label(new Rect(lx, ly, w, lh), $"[F1] ガードする: {guard}", labelStyle); ly += lh;
+            string attack = Sandbag.AttackEnabled ? "<color=#ff8080>ON</color>" : "OFF";
+            GUI.Label(new Rect(lx, ly, w, lh), $"[F3] 殴ってくる: {attack}", labelStyle);
         }
 
         /// <summary>左上の操作説明を描く</summary>
         void DrawHelpPanel(float s)
         {
             float w = 440 * s, x = 20 * s, y = 20 * s;
-            string[] lines =
+            var lines = new List<string>
             {
-                "<b>トレーニング(カゲツ)</b>",
+                $"<b>トレーニング({(Fighter != null ? Fighter.Kit.CharacterName : "")})</b>",
                 "移動: WASD / 左スティック",
                 "弱攻撃: U / X",
                 "中攻撃: I / Y",
                 "強攻撃: O / B",
-                "影穿ち: P",
-                "三日月払い: W+P",
-                "仮面解放: S+P",
-                "冥月斬: O+P",
+            };
+            if (Fighter != null) lines.AddRange(Fighter.Kit.MoveHelpLines);  // スキル1〜3 とウルト(キャラごと)
+            lines.AddRange(new[]
+            {
                 "ガード: J",
                 "回避: K(+方向)",
                 "リセット: R",
                 "[F2] ゲージ満タン",
-            };
+                "[F4] 自分の体力を減らす",
+                "[F5] キャラ切り替え",
+            });
             float lh = 34 * s;
-            GUI.Box(new Rect(x, y, w, lh * lines.Length + 24 * s), GUIContent.none, boxStyle);
+            GUI.Box(new Rect(x, y, w, lh * lines.Count + 24 * s), GUIContent.none, boxStyle);
             float ly = y + 12 * s;
             foreach (var line in lines)
             {
@@ -179,14 +199,20 @@ namespace Fight3D
             }
         }
 
-        /// <summary>下のカゲツのゲージとスキル状態を描く</summary>
+        /// <summary>下の自分のキャラの体力・ゲージ・スキル状態を描く</summary>
         void DrawFighterPanel(float s)
         {
             if (Fighter == null) return;
-            var sk = Fighter.Skills;
-            float w = 900 * s, h = 200 * s, x = (Screen.width - w) / 2f, y = Screen.height - h - 20 * s;
+            float w = 900 * s, h = 240 * s, x = (Screen.width - w) / 2f, y = Screen.height - h - 20 * s;
             GUI.Box(new Rect(x, y, w, h), GUIContent.none, boxStyle);
             float lx = x + 20 * s, ly = y + 10 * s, lh = 34 * s;
+
+            // 体力
+            float hp = Fighter.MaxHp > 0 ? (float)Fighter.Hp / Fighter.MaxHp : 0f;
+            GUI.Label(new Rect(lx, ly, 200 * s, lh), "体力", labelStyle);
+            DrawBar(new Rect(lx + 170 * s, ly + 8 * s, w - 400 * s, 20 * s), hp, new Color(0.3f, 0.85f, 0.4f));
+            GUI.Label(new Rect(x + w - 210 * s, ly, 200 * s, lh), $"{Fighter.Hp} / {Fighter.MaxHp}", labelStyle);
+            ly += lh + 6 * s;
 
             // ウルトゲージ
             float g = Fighter.Gauge / Tuning.Fighter.MaxGauge;
@@ -195,16 +221,12 @@ namespace Fight3D
             DrawBar(new Rect(lx + 170 * s, ly + 8 * s, w - 210 * s, 20 * s), g, full ? new Color(1f, 0.82f, 0.3f) : new Color(0.6f, 0.4f, 0.9f));
             ly += lh + 6 * s;
 
-            // スキル
-            string kage = $"影穿ち: 残り{sk.KageRemaining}回";
-            string mika = sk.MikazukiCooldownLeft > 0 ? $"三日月払い: {sk.MikazukiCooldownLeft / 60f:0.0}秒" : "三日月払い: OK";
-            string kamen = sk.KamenActive
-                ? $"<color=#ff6070>仮面解放中 {sk.KamenLeft / 60f:0.0}秒 呪印{sk.CurseMarks}</color>"
-                : (sk.KamenCooldownLeft > 0 ? $"仮面解放: {sk.KamenCooldownLeft / 60f:0.0}秒" : "仮面解放: OK");
-            // 見やすいように 1行に1つずつ
-            GUI.Label(new Rect(lx, ly, w, lh), kage, labelStyle); ly += lh;
-            GUI.Label(new Rect(lx, ly, w, lh), mika, labelStyle); ly += lh;
-            GUI.Label(new Rect(lx, ly, w, lh), kamen, labelStyle); ly += lh;
+            // スキル(見やすいように 1行に1つずつ。中身はキャラごと)
+            foreach (var line in Fighter.Kit.StatusLines())
+            {
+                GUI.Label(new Rect(lx, ly, w, lh), line, labelStyle);
+                ly += lh;
+            }
 
             string state = Fighter.CurrentMoveName;
             if (Fighter.IsInvincible) state += " (無敵)";

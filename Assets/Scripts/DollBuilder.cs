@@ -92,6 +92,50 @@ namespace Fight3D
         }
 
         /// <summary>
+        /// ゴウガの人形。大きな岩熊の獣人(茶色の体・丸い耳・鼻先)、右手に大きな拳。
+        /// 戻り値の armPivot を回すと右腕が振られる。
+        /// </summary>
+        public static GameObject BuildGouga(out Transform armPivot)
+        {
+            var root = new GameObject("Gouga");
+            // 見た目の部品は「Visual」の下にまとめる(呼吸の上下などで Visual だけ動かすため)
+            var t = new GameObject("Visual").transform;
+            t.SetParent(root.transform, false);
+
+            Color fur = new Color(0.36f, 0.24f, 0.15f);     // こげ茶の毛
+            Color belly = new Color(0.55f, 0.42f, 0.30f);   // お腹と鼻先の明るい茶色
+            Color rock = new Color(0.42f, 0.42f, 0.45f);    // 岩のような籠手(こて)と肩当て
+            Color dark = new Color(0.08f, 0.06f, 0.05f);    // 目と鼻
+
+            Part(PrimitiveType.Capsule, "LegL", t, new Vector3(-0.2f, 0.38f, 0f), new Vector3(0.3f, 0.38f, 0.3f), fur);
+            Part(PrimitiveType.Capsule, "LegR", t, new Vector3(0.2f, 0.38f, 0f), new Vector3(0.3f, 0.38f, 0.3f), fur);
+            Part(PrimitiveType.Capsule, "Body", t, new Vector3(0f, 1.2f, 0f), new Vector3(0.8f, 0.55f, 0.6f), fur);
+            Part(PrimitiveType.Sphere, "Belly", t, new Vector3(0f, 1.1f, 0.18f), new Vector3(0.55f, 0.6f, 0.35f), belly);
+            Part(PrimitiveType.Sphere, "Head", t, new Vector3(0f, 1.95f, 0.02f), new Vector3(0.46f, 0.44f, 0.44f), fur);
+            Part(PrimitiveType.Sphere, "EarL", t, new Vector3(-0.17f, 2.15f, 0f), new Vector3(0.14f, 0.14f, 0.08f), fur);
+            Part(PrimitiveType.Sphere, "EarR", t, new Vector3(0.17f, 2.15f, 0f), new Vector3(0.14f, 0.14f, 0.08f), fur);
+            // 鼻先(顔の前)。前 = +Z 方向
+            Part(PrimitiveType.Sphere, "Muzzle", t, new Vector3(0f, 1.9f, 0.2f), new Vector3(0.2f, 0.15f, 0.18f), belly);
+            Part(PrimitiveType.Sphere, "Nose", t, new Vector3(0f, 1.93f, 0.29f), new Vector3(0.07f, 0.05f, 0.05f), dark);
+            Part(PrimitiveType.Sphere, "EyeL", t, new Vector3(-0.09f, 2.0f, 0.2f), new Vector3(0.05f, 0.05f, 0.03f), dark);
+            Part(PrimitiveType.Sphere, "EyeR", t, new Vector3(0.09f, 2.0f, 0.2f), new Vector3(0.05f, 0.05f, 0.03f), dark);
+            Part(PrimitiveType.Cube, "ShoulderPlate", t, new Vector3(-0.45f, 1.62f, 0f), new Vector3(0.3f, 0.12f, 0.3f), rock);
+            Part(PrimitiveType.Capsule, "ArmL", t, new Vector3(-0.52f, 1.25f, 0.08f), new Vector3(0.22f, 0.35f, 0.22f), fur);
+            Part(PrimitiveType.Sphere, "FistL", t, new Vector3(-0.52f, 0.88f, 0.12f), new Vector3(0.26f, 0.26f, 0.26f), rock);
+
+            // 右腕: 右肩を支点にして回す。腕は前(+Z)に伸びている
+            var pivot = new GameObject("ArmPivot").transform;
+            pivot.SetParent(t, false);
+            pivot.localPosition = new Vector3(0.5f, 1.45f, 0.1f);
+            Part(PrimitiveType.Capsule, "ArmR", pivot, new Vector3(0f, 0f, 0.28f), new Vector3(0.22f, 0.3f, 0.22f), fur)
+                .transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            Part(PrimitiveType.Sphere, "FistR", pivot, new Vector3(0f, 0f, 0.65f), new Vector3(0.34f, 0.34f, 0.34f), rock);
+
+            armPivot = pivot;
+            return root;
+        }
+
+        /// <summary>
         /// サンドバッグ。台の上に袋が立っている。
         /// 戻り値の bag を揺らすと殴られたように見える。
         /// </summary>
