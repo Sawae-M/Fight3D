@@ -36,7 +36,8 @@ namespace Fight3D
             public const float Distance = 4.5f;        // [仕様書] キャラの後方 4.5m
             public const float Height = 4.0f;          // [仕様書] 高さ 4.0m
             public const float LookHeight = 0.5f;      // [仮] 見る点の高さ(m)。低くするほど見下ろす角度が深くなる(今は 約23度)
-            public const float LookTowardTarget = 0.6f;// [仮] 見る点を自分と相手の間のどこにするか(0 = 自分、1 = 相手)
+            public const float LookTowardTarget = 0.45f;// [仮] 見る点を自分と相手の間のどこにするか(0 = 自分、1 = 相手)。自分寄りにして、下の表示とキャラが重ならないように
+            public const float SideOffset = 0.8f;      // [仮] カメラを右にずらす量(m)。肩ごしに見て、近づいても相手が自分の体に隠れないように
             public const float FieldOfView = 50f;      // [仮] 視野角(度)
             public const float PositionDamping = 0.15f;// [仮] 追いかけるときのなめらかさ(大きいほどゆっくり)
             public const float RotationDamping = 0.2f; // [仮] 向きを変えるときのなめらかさ

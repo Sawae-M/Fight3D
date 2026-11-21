@@ -8,7 +8,7 @@ namespace Fight3D
     ///
     /// しくみ:
     /// - 「Anchor」: 自分のキャラの位置にあり、いつも相手の方を向いている見えない目印
-    /// - Cinemachine カメラは Anchor の後方 4m・高さ 2.5m について行く(CinemachineFollow)
+    /// - Cinemachine カメラは Anchor の右後ろ・上について行く(CinemachineFollow。距離は Tuning.Camera)
     /// - 「LookPoint」: 自分と相手の間(相手寄り)の点。カメラはここを画面中央に映す(CinemachineRotationComposer)
     /// </summary>
     [DefaultExecutionOrder(100)] // キャラが動いた後に目印を動かす
@@ -48,7 +48,7 @@ namespace Fight3D
             vcam.Lens.FieldOfView = Tuning.Camera.FieldOfView;  // 視野角
 
             var follow = vcamGo.AddComponent<CinemachineFollow>();
-            follow.FollowOffset = new Vector3(0f, Tuning.Camera.Height, -Tuning.Camera.Distance); // 後方 4m・高さ 2.5m
+            follow.FollowOffset = new Vector3(Tuning.Camera.SideOffset, Tuning.Camera.Height, -Tuning.Camera.Distance); // 右に少しずれた、後方・上(値は Tuning.cs)
             follow.TrackerSettings.BindingMode = Unity.Cinemachine.TargetTracking.BindingMode.LockToTarget;
             follow.TrackerSettings.PositionDamping = Vector3.one * Tuning.Camera.PositionDamping;
             follow.TrackerSettings.RotationDamping = Vector3.one * Tuning.Camera.RotationDamping;
