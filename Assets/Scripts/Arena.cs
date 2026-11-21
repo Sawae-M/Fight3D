@@ -7,8 +7,6 @@ namespace Fight3D
     /// </summary>
     public static class Arena
     {
-        /// <summary>ステージの半径(m)。仕様書: 10m</summary>
-        public const float Radius = 10f;
 
         /// <summary>
         /// 見えない壁: 円の外に出ようとしたら円の内側に戻す。
@@ -16,7 +14,7 @@ namespace Fight3D
         /// </summary>
         public static Vector3 ClampInside(Vector3 pos, float bodyRadius)
         {
-            float limit = Radius - bodyRadius;
+            float limit = Tuning.Stage.Radius - bodyRadius;
             Vector2 flat = new Vector2(pos.x, pos.z);
             if (flat.magnitude > limit)
             {
@@ -31,7 +29,7 @@ namespace Fight3D
         public static bool IsAtWall(Vector3 pos, float bodyRadius)
         {
             Vector2 flat = new Vector2(pos.x, pos.z);
-            return flat.magnitude >= Radius - bodyRadius - 0.01f;
+            return flat.magnitude >= Tuning.Stage.Radius - bodyRadius - 0.01f;  // 0.01m は計算の誤差のぶん
         }
     }
 }

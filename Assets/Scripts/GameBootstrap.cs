@@ -21,22 +21,22 @@ namespace Fight3D
         public static void BuildTraining()
         {
             // ゲームの進行を 1秒に60回 にする(仕様書: 60fps 固定)
-            Time.fixedDeltaTime = 1f / 60f;
-            Application.targetFrameRate = 60;
+            Time.fixedDeltaTime = 1f / Tuning.Game.FramesPerSecond;
+            Application.targetFrameRate = Tuning.Game.FramesPerSecond;
 
             BuildStage();
             EnsureLight();
 
             // サンドバッグ: 円の中心から 3m(仕様書「11.」)
             var bagGo = DollBuilder.BuildSandbag(out Transform bagPivot);
-            bagGo.transform.position = new Vector3(0f, 0f, 3f);
+            bagGo.transform.position = Tuning.Stage.SandbagStart;
             var sandbag = bagGo.AddComponent<Sandbag>();
             sandbag.Bag = bagPivot;
             sandbag.StartPosition = bagGo.transform.position;
 
             // カゲツ: サンドバッグと向き合う位置
             var kagetsuGo = DollBuilder.BuildKagetsu(out Transform swordPivot);
-            kagetsuGo.transform.position = new Vector3(0f, 0f, -3f);
+            kagetsuGo.transform.position = Tuning.Stage.PlayerStart;
             var fighter = kagetsuGo.AddComponent<FighterController>();
             fighter.Target = bagGo.transform;
             fighter.TargetSandbag = sandbag;
@@ -69,7 +69,7 @@ namespace Fight3D
             var stage = new GameObject("Stage").transform;
 
             // 円形の床(Cylinder は直径1なので、横を 20 倍で半径 10m)
-            float d = Arena.Radius * 2f;
+            float d = Tuning.Stage.Radius * 2f;
             DollBuilder.Part(PrimitiveType.Cylinder, "Edge", stage, new Vector3(0f, -0.12f, 0f),
                 new Vector3(d + 0.6f, 0.1f, d + 0.6f), new Color(0.35f, 0.12f, 0.15f));
             DollBuilder.Part(PrimitiveType.Cylinder, "Floor", stage, new Vector3(0f, -0.05f, 0f),

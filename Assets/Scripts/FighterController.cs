@@ -15,20 +15,7 @@ namespace Fight3D
     /// </summary>
     public class FighterController : MonoBehaviour
     {
-        public const float BodyRadius = 0.35f;  // 体の太さ(半径 m)。壁やめり込みの判定に使う
-        const float ForwardSpeed = 4.0f;    // 前歩き m/秒
-        const float OtherSpeed = 3.0f;      // 後ろ・横歩き m/秒
-        const int BufferFrames = 8;         // 先行入力の猶予
-        const int HitstopFrames = 4;        // 当たった瞬間に少し止まる演出
-        const int UltSimultaneousFrames = 3;// O+P を同時とみなす猶予
-        const int UltEarlyConvertFrames = 3;// 強・スキルの出始めならウルトに切り替える
-        public const float MaxGauge = 100f;  // ウルトゲージの最大(仕様書: 100)
-
-        // 回避ステップ(仕様書「6. 共通の動き」)
-        const float DodgeDistance = 2.5f;
-        const int DodgeFrames = 24;  // 回避の全体の時間(F)
-        const int DodgeInvulnStart = 4, DodgeInvulnEnd = 12;  // 無敵になる時間(4F目〜12F目)
-        const int DodgeCooldown = 20;  // 回避が終わってから次に使えるまで(F)
+        // 数値(歩く速さ・回避・ゲージなど)は Tuning.cs の Tuning.Fighter にある
 
         public Transform Target;            // 相手(今はサンドバッグ)
         public Sandbag TargetSandbag;  // 相手のサンドバッグ(攻撃を当てる先)
@@ -37,11 +24,11 @@ namespace Fight3D
         public CameraRig CameraRig;         // リセット時にカメラを瞬間移動させる用
 
         // ---- 外から見る用(画面表示など) ----
-        public float Gauge { get; private set; }
+        public float Gauge { get; private set; }  // 今のウルトゲージ(0〜100)
         public KagetsuSkills Skills { get; } = new KagetsuSkills();  // カゲツのスキルの状態
         public bool IsGuarding { get; private set; }  // ガード中か
         public bool IsDodging => dodgeFrame > 0;  // 回避中か
-        public bool IsInvincible => dodgeFrame >= DodgeInvulnStart && dodgeFrame <= DodgeInvulnEnd;  // 無敵中か(回避の途中)
+        public bool IsInvincible => dodgeFrame >= Tuning.Fighter.DodgeInvulnStart && dodgeFrame <= Tuning.Fighter.DodgeInvulnEnd;  // 無敵中か(回避の途中)
         public int DodgeCooldownLeft => dodgeCooldown;  // 回避が次に使えるまでの残り(F)
         public string CurrentMoveName => current != null ? current.Name : (IsDodging ? "回避" : (IsGuarding ? "ガード" : ""));  // 今の動作の名前(画面表示用)
         public int LastComboBonusPercent { get; private set; }  // 直前のヒットの連刃ボーナス(%)
@@ -124,17 +111,17 @@ namespace Fight3D
             if (input.Heavy.WasPressedThisFrame())
             {
                 lastHeavyTick = tick;
-                pressedCommand = (tick - lastSkillTick <= UltSimultaneousFrames) ? Command.Ult : Command.Heavy;
+                pressedCommand = (tick - lastSkillTick <= Tuning.Fighter.UltSimultaneousFrames) ? Command.Ult : Command.Heavy;
             }
             if (input.Skill.WasPressedThisFrame())
             {
                 lastSkillTick = tick;
-                if (tick - lastHeavyTick <= UltSimultaneousFrames) pressedCommand = Command.Ult;
+                if (tick - lastHeavyTick <= Tuning.Fighter.UltSimultaneousFrames) pressedCommand = Command.Ult;
                 else
                 {
                     // 方向キーでスキルが変わる: W+P = スキル2、S+P = スキル3、P だけ = スキル1
                     float y = input.MoveValue.y;
-                    pressedCommand = y > 0.5f ? Command.Skill2 : (y < -0.5f ? Command.Skill3 : Command.Skill1);
+                    pressedCommand = y > Tuning.Fighter.SkillDirectionThreshold ? Command.Skill2 : (y < -Tuning.Fighter.SkillDirectionThreshold ? Command.Skill3 : Command.Skill1);
                 }
             }
             if (input.Dodge.WasPressedThisFrame()) pressedDodge = true;
@@ -153,13 +140,13 @@ namespace Fight3D
             if (pressedCommand.HasValue)
             {
                 bufferedCommand = pressedCommand;
-                bufferLeft = BufferFrames;
+                bufferLeft = Tuning.Fighter.BufferFrames;
                 pressedCommand = null;
             }
             if (pressedDodge)
             {
                 dodgeBuffered = true;
-                dodgeBufferLeft = BufferFrames;
+                dodgeBufferLeft = Tuning.Fighter.BufferFrames;
                 pressedDodge = false;
             }
 
@@ -189,7 +176,7 @@ namespace Fight3D
             {
                 var cmd = bufferedCommand.Value;
                 // ゲージが足りないときの O+P は、ふつうの強攻撃として扱う
-                if (cmd == Command.Ult && Gauge < MaxGauge) cmd = Command.Heavy;
+                if (cmd == Command.Ult && Gauge < Tuning.Fighter.MaxGauge) cmd = Command.Heavy;
 
                 if (CanStart(cmd))
                 {
@@ -215,11 +202,11 @@ namespace Fight3D
         {
             if (dodgeFrame > 0) return false;
             if (!Skills.CanUse(cmd)) return false;
-            if (cmd == Command.Ult && Gauge < MaxGauge) return false;
+            if (cmd == Command.Ult && Gauge < Tuning.Fighter.MaxGauge) return false;
             if (current == null) return true;
 
             // 強・スキルの出始めに O+P がそろったらウルトに切り替える
-            if (cmd == Command.Ult && !contacted && attackFrame <= UltEarlyConvertFrames &&
+            if (cmd == Command.Ult && !contacted && attackFrame <= Tuning.Fighter.UltEarlyConvertFrames &&
                 (currentCommand == Command.Heavy || currentCommand == Command.Skill1 || currentCommand == Command.Skill2))
                 return true;
 
@@ -304,7 +291,7 @@ namespace Fight3D
                 {
                     if (sh.Frame == attackFrame)
                     {
-                        Strike(sh.Damage, sh.Hitstun, sh.Effect, false, true, 3);
+                        Strike(sh.Damage, sh.Hitstun, sh.Effect, false, true, Tuning.Fighter.RushHitstopFrames);
                     }
                 }
             }
@@ -313,7 +300,7 @@ namespace Fight3D
                 bool active = attackFrame > curStartup && attackFrame <= curStartup + current.Active;
                 if (active && !contacted && current.Damage > 0 && TargetIsInReach(current.Reach, current.Arc))
                 {
-                    var outcome = Strike(current.Damage, current.Hitstun, current.Effect, current.GuardBreak, false, HitstopFrames);
+                    var outcome = Strike(current.Damage, current.Hitstun, current.Effect, current.GuardBreak, false, Tuning.Fighter.HitstopFrames);
                     contacted = true;
                     if (outcome == HitOutcome.Hit || outcome == HitOutcome.GuardCrushed) connected = true;
 
@@ -337,7 +324,7 @@ namespace Fight3D
 
             // パッシブ「連刃」: 2ヒット目から1ヒットごとに +3%、最大 +24%
             int hitNumber = TargetSandbag.NextComboHitNumber();
-            int bonusPercent = Mathf.Min((hitNumber - 1) * 3, 24);
+            int bonusPercent = Mathf.Min((hitNumber - 1) * Tuning.Kagetsu.RenjinBonusPerHit, Tuning.Kagetsu.RenjinMaxBonus);
             int damage = Mathf.RoundToInt(baseDamage * (1f + bonusPercent / 100f));
 
             var result = TargetSandbag.TakeHit(new HitInfo
@@ -351,15 +338,17 @@ namespace Fight3D
                 AttackerPosition = transform.position,
             });
 
+            // ウルトの攻撃ではゲージをためない(仕様書 2026-11-21 追加)
+            bool gainGauge = Tuning.Fighter.UltGainsGauge || currentCommand != Command.Ult || current == null;
             if (result.Outcome == HitOutcome.Hit)
             {
                 LastComboBonusPercent = bonusPercent;
                 Skills.OnHit();
-                AddGauge(result.DamageDealt * 0.10f); // 与えたダメージの 10%
+                if (gainGauge) AddGauge(result.DamageDealt * Tuning.Fighter.GaugeOnHitRate); // 与えたダメージの 10%
             }
-            else
+            else if (gainGauge)
             {
-                AddGauge(3f); // ガードされた
+                AddGauge(Tuning.Fighter.GaugeOnGuarded); // ガードされた
             }
             hitstopLeft = hitstop;
             return result.Outcome;
@@ -370,13 +359,13 @@ namespace Fight3D
         {
             TrainingHUD.AddTextPopup($"呪印 ×{marks}", new Color(0.8f, 0.3f, 1f),
                 (Target != null ? Target.position : transform.position) + Vector3.up * 2.6f);
-            Strike(marks * KagetsuSkills.CurseDamagePerMark, 12, HitEffect.Normal, false, true, 6);
+            Strike(marks * Tuning.Kagetsu.CurseDamagePerMark, Tuning.Kagetsu.CurseBurstHitstun, HitEffect.Normal, false, true, Tuning.Kagetsu.CurseBurstHitstop);
         }
 
         /// <summary>ウルトゲージを増やす(0〜100 の範囲に収める)</summary>
         public void AddGauge(float amount)
         {
-            Gauge = Mathf.Clamp(Gauge + amount, 0f, MaxGauge);
+            Gauge = Mathf.Clamp(Gauge + amount, 0f, Tuning.Fighter.MaxGauge);
         }
 
         // ================================================================
@@ -388,14 +377,14 @@ namespace Fight3D
             if (Target == null) return;
 
             Vector2 stick = input.MoveValue;
-            if (stick.magnitude < 0.2f) return; // スティックの遊び
+            if (stick.magnitude < Tuning.Fighter.StickDeadZone) return; // スティックの遊び
             float v = stick.y, h = stick.x;
 
             Vector3 forward = ForwardToTarget();
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             Vector3 dir = (forward * v + right * h).normalized;
             // 前に倒しているときは前歩き速度、それ以外は後ろ・横歩き速度。倒し具合で遅くもなる
-            float speed = (v > Mathf.Abs(h) ? ForwardSpeed : OtherSpeed) * Mathf.Clamp01(stick.magnitude) * Skills.SpeedScale;
+            float speed = (v > Mathf.Abs(h) ? Tuning.Fighter.ForwardSpeed : Tuning.Fighter.OtherSpeed) * Mathf.Clamp01(stick.magnitude) * Skills.SpeedScale;
             MoveTo(transform.position + dir * speed * Time.fixedDeltaTime);
         }
 
@@ -406,7 +395,7 @@ namespace Fight3D
             Vector3 forward = ForwardToTarget();
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             // 方向なしなら後ろへ
-            dodgeDir = stick.magnitude < 0.2f ? -forward : (forward * stick.y + right * stick.x).normalized;
+            dodgeDir = stick.magnitude < Tuning.Fighter.StickDeadZone ? -forward : (forward * stick.y + right * stick.x).normalized;
             dodgeFrame = 0;
             IsGuarding = false;
             TickDodge();
@@ -417,14 +406,14 @@ namespace Fight3D
         {
             dodgeFrame++;
             // はじめ速く、終わりゆっくり
-            float prev = DodgeCurve((dodgeFrame - 1) / (float)DodgeFrames);
-            float now = DodgeCurve(dodgeFrame / (float)DodgeFrames);
-            MoveTo(transform.position + dodgeDir * (now - prev) * DodgeDistance);
+            float prev = DodgeCurve((dodgeFrame - 1) / (float)Tuning.Fighter.DodgeFrames);
+            float now = DodgeCurve(dodgeFrame / (float)Tuning.Fighter.DodgeFrames);
+            MoveTo(transform.position + dodgeDir * (now - prev) * Tuning.Fighter.DodgeDistance);
 
-            if (dodgeFrame >= DodgeFrames)
+            if (dodgeFrame >= Tuning.Fighter.DodgeFrames)
             {
                 dodgeFrame = 0;
-                dodgeCooldown = DodgeCooldown;
+                dodgeCooldown = Tuning.Fighter.DodgeCooldown;
             }
         }
 
@@ -440,7 +429,7 @@ namespace Fight3D
         {
             if (Target == null) return;
             Vector3 forward = ForwardToTarget();
-            float contact = BodyRadius + Sandbag.BodyRadius + 0.05f;
+            float contact = Tuning.Fighter.BodyRadius + Tuning.Sandbag.BodyRadius + Tuning.Fighter.ContactGap;
             float dist = FlatDistanceToTarget();
             float step = Mathf.Min(distance, Mathf.Max(0f, dist - contact)); // 相手に当たる距離で止まる
             lungeTravelled += step;
@@ -454,14 +443,14 @@ namespace Fight3D
             {
                 Vector3 fromTarget = pos - Target.position;
                 fromTarget.y = 0f;
-                float minDist = BodyRadius + Sandbag.BodyRadius;
+                float minDist = Tuning.Fighter.BodyRadius + Tuning.Sandbag.BodyRadius;
                 if (fromTarget.magnitude < minDist)
                 {
                     Vector3 push = fromTarget.sqrMagnitude > 0.0001f ? fromTarget.normalized : -ForwardToTarget();
                     pos = new Vector3(Target.position.x, pos.y, Target.position.z) + push * minDist;
                 }
             }
-            transform.position = Arena.ClampInside(pos, BodyRadius);
+            transform.position = Arena.ClampInside(pos, Tuning.Fighter.BodyRadius);
         }
 
         /// <summary>自分から相手への水平な向き(長さ1)</summary>
@@ -489,7 +478,7 @@ namespace Fight3D
             to.y = 0f;
             float dist = to.magnitude;
             // 体の表面からリーチ分届くか(相手の太さも少し含める)
-            if (dist > BodyRadius + reach + Sandbag.BodyRadius * 0.5f) return false;
+            if (dist > Tuning.Fighter.BodyRadius + reach + Tuning.Sandbag.BodyRadius * 0.5f) return false;
             return dist < 0.01f || Vector3.Angle(transform.forward, to) <= arc * 0.5f;
         }
 
