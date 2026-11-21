@@ -40,9 +40,11 @@ namespace Fight3D
             StartRound();
         }
 
-        /// <summary>試合を最初からやり直す(R キー)</summary>
+        /// <summary>試合を最初からやり直す(R キー)。ウルトゲージも 0 に戻す(持ち越すのはラウンドの間だけ)</summary>
         public void RestartMatch()
         {
+            Player.ClearGauge();
+            Cpu.ClearGauge();
             Round = 1;
             PlayerWins = 0;
             CpuWins = 0;

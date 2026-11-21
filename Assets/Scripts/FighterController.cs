@@ -611,6 +611,12 @@ namespace Fight3D
             Hp = Mathf.Clamp(Mathf.RoundToInt(MaxHp * ratio), 1, MaxHp);
         }
 
+        /// <summary>ウルトゲージを 0 にする(新しい試合の始め)</summary>
+        public void ClearGauge()
+        {
+            Gauge = 0f;
+        }
+
         /// <summary>ウルトゲージを増やす(0〜100 の範囲に収める)</summary>
         public void AddGauge(float amount)
         {
@@ -625,7 +631,7 @@ namespace Fight3D
         {
             if (Target == null) return;
 
-            Vector2 stick = input.MoveValue;
+            Vector2 stick = MoveValue;  // CPU なら頭脳の値、人ならキーボード・コントローラーの値
             if (stick.magnitude < Tuning.Fighter.StickDeadZone) return; // スティックの遊び
             float v = stick.y, h = stick.x;
 
@@ -640,7 +646,7 @@ namespace Fight3D
         /// <summary>回避ステップを始める(方向は押している移動キー。なければ後ろ)</summary>
         void StartDodge()
         {
-            Vector2 stick = input.MoveValue;
+            Vector2 stick = MoveValue;  // CPU なら頭脳の値、人ならキーボード・コントローラーの値
             Vector3 forward = ForwardToTarget();
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             // 方向なしなら後ろへ
