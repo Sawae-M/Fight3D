@@ -1,5 +1,6 @@
 using System.Linq;
 using UnityEditor;
+using UnityEngine;
 
 /// <summary>
 /// Assets/Models/Characters の中に入れたキャラのモデル(FBX)を、
@@ -28,6 +29,32 @@ public class CharacterModelPostprocessor : AssetPostprocessor
         importer.useFileScale = true;         // FBX に書かれた単位(メートル)を使う
         importer.importAnimation = true;      // Blender で作ったアニメを読み込む
         importer.materialImportMode = ModelImporterMaterialImportMode.ImportStandard; // Blender の色をそのまま使う
+    }
+
+    /// <summary>キャラに使うトゥーン(アニメ調)シェーダーの名前(Assets/Models/Shaders/Fight3DToon.shader)</summary>
+    private const string ToonShaderName = "Fight3D/Toon";
+
+    /// <summary>
+    /// モデルのマテリアルを読み込んだ後に呼ばれる。Blender の色を引き継いだまま、トゥーンシェーダーに切り替える。
+    /// 名前に Metal / Gold / Blade が入るマテリアルには、金属の小さなハイライトを付ける。
+    /// </summary>
+    private void OnPostprocessMaterial(Material material)
+    {
+        if (!assetPath.StartsWith(CharacterFolder)) return;
+        var toon = Shader.Find(ToonShaderName);
+        if (toon == null) return; // シェーダーがまだ無いときは、今まで通りの見た目のまま
+
+        // Blender で付けた色を先に取っておく(URP では _BaseColor、古い形式では _Color)
+        Color baseColor = material.HasProperty("_BaseColor") ? material.GetColor("_BaseColor") : material.color;
+
+        material.shader = toon;
+        material.SetColor("_BaseColor", baseColor);
+        // 輪郭線は、その物の色をうんと暗くした色にする(真っ黒より柔らかく見える)
+        material.SetColor("_OutlineColor", baseColor * 0.25f);
+
+        string n = material.name;
+        bool shiny = n.Contains("Metal") || n.Contains("Gold") || n.Contains("Blade");
+        material.SetFloat("_SpecStrength", shiny ? 0.6f : 0f); // [仮] 金属のハイライトの強さ
     }
 
     /// <summary>
