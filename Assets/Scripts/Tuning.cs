@@ -271,8 +271,12 @@ namespace Fight3D
     /// </summary>
     public static class GougaMoves
     {
-        /// <summary>通常攻撃のダメージ: 基本形 × 1.15(四捨五入)</summary>
-        static int NormalDamage(int baseDamage) => (int)System.Math.Floor(baseDamage * Tuning.Gouga.NormalDamageScale + 0.5f);
+        /// <summary>
+        /// 通常攻撃のダメージ: 基本形 × 1.15(四捨五入)。
+        /// float のままだと 30 × 1.15 が 34.4999… になり 34 になってしまうので、decimal(10進数)で計算する
+        /// </summary>
+        static int NormalDamage(int baseDamage) =>
+            (int)System.Math.Round(baseDamage * (decimal)Tuning.Gouga.NormalDamageScale, System.MidpointRounding.AwayFromZero);  // 30→35、60→69、100→115
 
         /// <summary>通常攻撃の出るまでの時間: 基本形 + 2F</summary>
         static int NormalStartup(int baseStartup) => baseStartup + Tuning.Gouga.NormalStartupAdd;
