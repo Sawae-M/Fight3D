@@ -23,10 +23,30 @@ namespace Fight3D
             return go;
         }
 
+        // 基本図形の既定マテリアルはビルドに URP/Lit が含まれずマゼンタになるため、
+        // Resources/DollLit.mat(URP/Lit)を元にして色を付ける
+        static Material baseMat;
+        static bool baseMatLoaded;
+
+        static Material BaseMat
+        {
+            get
+            {
+                if (!baseMatLoaded)
+                {
+                    baseMat = Resources.Load<Material>("DollLit");
+                    baseMatLoaded = true;
+                }
+                return baseMat;
+            }
+        }
+
         public static void Paint(GameObject go, Color color)
         {
             var r = go.GetComponent<Renderer>();
-            if (r != null) r.material.color = color;
+            if (r == null) return;
+            if (BaseMat != null) r.material = new Material(BaseMat) { color = color };
+            else r.material.color = color; // 見つからないときは今まで通り
         }
 
         /// <summary>
