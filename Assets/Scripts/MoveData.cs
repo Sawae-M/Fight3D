@@ -25,7 +25,7 @@ namespace Fight3D
         { Frame = frame; Damage = damage; Effect = effect; Hitstun = hitstun; }
     }
 
-    /// <summary>剣の振り方(見た目だけ)</summary>
+    /// <summary>剣(ゴウガは右腕)の振り方(見た目だけ)</summary>
     public struct SwordPose
     {
         public Vector3 WindEuler, EndEuler;     // 構え → 振り終わり の向き
@@ -59,6 +59,11 @@ namespace Fight3D
         // 踏み込み: LungeStart〜LungeEnd フレームの間に LungeDistance m 前へ進む(相手に当たる距離で止まる)
         public float LungeDistance;
         public int LungeStart = 1, LungeEnd;  // 踏み込む期間(何F目から何F目まで)
+
+        // ゴウガ用の特別な技
+        public bool SpawnsShockwave;  // 出るまでの時間が終わった瞬間に衝撃波を出す(岩砕き)。この技自体は殴らない
+        public bool IsGrab;           // つかみ技(ガードできない・受け止められない。当たると引き寄せる)
+        public bool IsCounterStance;  // 当たっている時間の間、攻撃を受けると反撃に変わる構え(受け止め)
 
         // 決まったフレームに必ず当たる攻撃(ある場合は Startup/Active の判定は使わない)
         public ScriptedHit[] ScriptedHits;
