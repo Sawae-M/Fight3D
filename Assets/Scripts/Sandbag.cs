@@ -121,7 +121,7 @@ namespace Fight3D
             {
                 if (info.GuardBreak)
                 {
-                    // ガード崩し: ガードが解けて 30F 動けない(ダメージは無し)
+                    // ガード崩し: ガードが解けてしばらく動けない(時間は Tuning.cs、ダメージは無し)
                     result.Outcome = HitOutcome.GuardCrushed;
                     blockstunLeft = 0;
                     hitstunLeft = Tuning.Sandbag.GuardCrushFrames;

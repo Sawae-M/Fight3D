@@ -338,13 +338,15 @@ namespace Fight3D
                 AttackerPosition = transform.position,
             });
 
+            // ウルトの攻撃ではゲージをためない(仕様書 2026-11-21 追加)
+            bool gainGauge = Tuning.Fighter.UltGainsGauge || currentCommand != Command.Ult || current == null;
             if (result.Outcome == HitOutcome.Hit)
             {
                 LastComboBonusPercent = bonusPercent;
                 Skills.OnHit();
-                AddGauge(result.DamageDealt * Tuning.Fighter.GaugeOnHitRate); // 与えたダメージの 10%
+                if (gainGauge) AddGauge(result.DamageDealt * Tuning.Fighter.GaugeOnHitRate); // 与えたダメージの 10%
             }
-            else
+            else if (gainGauge)
             {
                 AddGauge(Tuning.Fighter.GaugeOnGuarded); // ガードされた
             }

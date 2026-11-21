@@ -59,6 +59,7 @@ namespace Fight3D
             public const float MaxGauge = 100f;        // [仕様書] 最大 100
             public const float GaugeOnHitRate = 0.10f; // [仕様書] 当てたダメージの 10% たまる
             public const float GaugeOnGuarded = 3f;    // [仕様書] ガードされたら 3 たまる
+            public const bool UltGainsGauge = false;   // [仕様書] ウルトの攻撃ではゲージがたまらない(2026-11-21 に追加)
 
             // 回避ステップ(仕様書「6.」)
             public const float DodgeDistance = 2.5f;   // [仕様書] 移動距離(m)
@@ -104,7 +105,7 @@ namespace Fight3D
             public const int AirFrames = 36;           // [仮] 浮いている時間(F)
             public const int LandingFrames = 30;       // [仕様書] 着地後 30F 動けない
             public const float JuggleScale = 0.7f;     // [仕様書] 浮いている相手への追い打ちは 0.7倍
-            public const int GuardCrushFrames = 30;    // [仕様書] ガード崩し: 30F 動けない
+            public const int GuardCrushFrames = 50;    // [仕様書] ガード崩し: 50F 動けない(2026-11-21 に 30F から変更。崩した後に追撃できるように)
             public const float BlockstunScale = 0.6f;  // [仮] ガードしたときの硬直 = のけぞり時間 × 0.6
             public const int MinBlockstun = 6;         // [仮] ガード硬直の最短(F)
         }
