@@ -25,9 +25,10 @@ namespace Fight3D
 
         // 基本図形の既定マテリアルはビルドに URP/Lit が含まれずマゼンタになるため、
         // Resources/DollLit.mat(URP/Lit)を元にして色を付ける
-        static Material baseMat;
-        static bool baseMatLoaded;
+        static Material baseMat;       // 読み込んだ DollLit マテリアル(無ければ null)
+        static bool baseMatLoaded;     // もう読み込みを試したか(何度も読み込まないため)
 
+        /// <summary>色を付ける元になるマテリアル(最初に使うときに1回だけ読み込む)</summary>
         static Material BaseMat
         {
             get
@@ -41,6 +42,7 @@ namespace Fight3D
             }
         }
 
+        /// <summary>図形に色を付ける(DollLit を複製して色を変える)</summary>
         public static void Paint(GameObject go, Color color)
         {
             var r = go.GetComponent<Renderer>();
@@ -98,8 +100,8 @@ namespace Fight3D
             var root = new GameObject("Sandbag");
             var t = root.transform;
 
-            Color baseColor = new Color(0.25f, 0.25f, 0.28f);
-            Color bagColor = new Color(0.72f, 0.60f, 0.42f);
+            Color baseColor = new Color(0.25f, 0.25f, 0.28f);  // 台と支柱(暗い灰色)
+            Color bagColor = new Color(0.72f, 0.60f, 0.42f);   // 袋(砂色)
 
             Part(PrimitiveType.Cylinder, "Base", t, new Vector3(0f, 0.05f, 0f), new Vector3(0.9f, 0.05f, 0.9f), baseColor);
 

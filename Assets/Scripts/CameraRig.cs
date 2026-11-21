@@ -16,8 +16,8 @@ namespace Fight3D
     {
         public Transform Player;  // 自分のキャラ(カメラはこの後ろにつく)
         public Transform Target;  // 相手(カメラはこちらを向く)
-        public float LookHeight = 1.0f;  // 見る点の高さ(m)。だいたい胸のあたり
-        [Range(0f, 1f)] public float LookTowardTarget = 0.7f;
+        public float LookHeight = Tuning.Camera.LookHeight;  // 見る点の高さ(m)。値は Tuning.cs
+        [Range(0f, 1f)] public float LookTowardTarget = Tuning.Camera.LookTowardTarget;  // 見る点を自分と相手の間のどこにするか(0 = 自分、1 = 相手)
 
         public Transform Anchor { get; private set; }  // カメラがついて行く目印
         public Transform LookPoint { get; private set; }  // カメラが画面中央に映す点
@@ -45,16 +45,16 @@ namespace Fight3D
             var vcamGo = new GameObject("CM FightCamera");
             vcamGo.transform.SetParent(rigGo.transform, false);
             var vcam = vcamGo.AddComponent<CinemachineCamera>();
-            vcam.Lens.FieldOfView = 50f;
+            vcam.Lens.FieldOfView = Tuning.Camera.FieldOfView;  // 視野角
 
             var follow = vcamGo.AddComponent<CinemachineFollow>();
-            follow.FollowOffset = new Vector3(0f, 2.5f, -4f); // 後方 4m・高さ 2.5m
+            follow.FollowOffset = new Vector3(0f, Tuning.Camera.Height, -Tuning.Camera.Distance); // 後方 4m・高さ 2.5m
             follow.TrackerSettings.BindingMode = Unity.Cinemachine.TargetTracking.BindingMode.LockToTarget;
-            follow.TrackerSettings.PositionDamping = new Vector3(0.15f, 0.15f, 0.15f);
-            follow.TrackerSettings.RotationDamping = new Vector3(0.2f, 0.2f, 0.2f);
+            follow.TrackerSettings.PositionDamping = Vector3.one * Tuning.Camera.PositionDamping;
+            follow.TrackerSettings.RotationDamping = Vector3.one * Tuning.Camera.RotationDamping;
 
             var composer = vcamGo.AddComponent<CinemachineRotationComposer>();
-            composer.Damping = new Vector2(0.2f, 0.2f);
+            composer.Damping = Vector2.one * Tuning.Camera.RotationDamping;
 
             vcam.Follow = rig.Anchor;
             vcam.LookAt = rig.LookPoint;

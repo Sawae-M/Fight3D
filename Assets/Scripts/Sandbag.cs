@@ -36,17 +36,9 @@ namespace Fight3D
     /// </summary>
     public class Sandbag : MonoBehaviour
     {
-        public const float BodyRadius = 0.4f;  // 体の太さ(半径 m)
-        const int RecoverFrames = 120;   // 2秒
-        const int ComboWindow = 40;      // 前のヒットから40F以内なら連続技が続く
-        const int StaggerFrames = 40;    // よろけ
-        const int AirFrames = 36;        // 浮いている時間(仮)
-        const int LandingFrames = 30;    // 着地後に動けない時間
-        const float JuggleScale = 0.7f;  // 浮き中の追い打ち
-        const int GuardCrushFrames = 30; // ガード崩し
-        const float BlockstunScale = 0.6f;  // ガードしたときの硬直 = のけぞり時間 × 0.6(仮)
+        // 数値(よろけ・浮きの時間など)は Tuning.cs の Tuning.Sandbag にある
 
-        public int MaxHp = 1000;  // 最大体力(仮)
+        public int MaxHp = Tuning.Sandbag.MaxHp;  // 最大体力(値は Tuning.cs)
         public int Hp { get; private set; }  // 今の体力
         public int LastDamage { get; private set; }  // 直前のダメージ
         public int ComboDamage { get; private set; }  // 今の連続技の合計ダメージ
@@ -112,7 +104,7 @@ namespace Fight3D
         /// <summary>次に当たる攻撃が「連続技の何ヒット目」になるか</summary>
         public int NextComboHitNumber()
         {
-            bool comboContinues = InHitstun && framesSinceHit <= ComboWindow;
+            bool comboContinues = InHitstun && framesSinceHit <= Tuning.Sandbag.ComboWindow;
             return comboContinues ? ComboHits + 1 : 1;
         }
 
@@ -132,7 +124,7 @@ namespace Fight3D
                     // ガード崩し: ガードが解けて 30F 動けない(ダメージは無し)
                     result.Outcome = HitOutcome.GuardCrushed;
                     blockstunLeft = 0;
-                    hitstunLeft = GuardCrushFrames;
+                    hitstunLeft = Tuning.Sandbag.GuardCrushFrames;
                     crushed = true;
                     staggered = false;
                     ComboHits = 0;
@@ -143,7 +135,7 @@ namespace Fight3D
                 else
                 {
                     result.Outcome = HitOutcome.Guarded;
-                    blockstunLeft = Mathf.Max(6, Mathf.RoundToInt(info.Hitstun * BlockstunScale));
+                    blockstunLeft = Mathf.Max(Tuning.Sandbag.MinBlockstun, Mathf.RoundToInt(info.Hitstun * Tuning.Sandbag.BlockstunScale));
                     PlayHitEffect(8, info.AttackerPosition, new Color(0.4f, 0.7f, 1f));
                     TrainingHUD.AddTextPopup("GUARD", new Color(0.5f, 0.8f, 1f), popupPos);
                 }
@@ -159,7 +151,7 @@ namespace Fight3D
             }
 
             int damage = info.Damage;
-            if (airLeft > 0) damage = Mathf.RoundToInt(damage * JuggleScale); // 浮き中の追い打ち
+            if (airLeft > 0) damage = Mathf.RoundToInt(damage * Tuning.Sandbag.JuggleScale); // 浮き中の追い打ち
 
             ComboHits = hitNumber;
             ComboDamage += damage;
@@ -171,17 +163,17 @@ namespace Fight3D
             switch (info.Effect)
             {
                 case HitEffect.Launch:
-                    airLeft = AirFrames;
-                    hitstunLeft = AirFrames + LandingFrames;
+                    airLeft = Tuning.Sandbag.AirFrames;
+                    hitstunLeft = Tuning.Sandbag.AirFrames + Tuning.Sandbag.LandingFrames;
                     staggered = false;
                     PlayLaunch();
                     break;
                 case HitEffect.Stagger:
                     staggered = true;
-                    hitstunLeft = Mathf.Max(hitstunLeft, airLeft > 0 ? airLeft + LandingFrames : StaggerFrames);
+                    hitstunLeft = Mathf.Max(hitstunLeft, airLeft > 0 ? airLeft + Tuning.Sandbag.LandingFrames : Tuning.Sandbag.StaggerFrames);
                     break;
                 default:
-                    if (airLeft > 0) hitstunLeft = Mathf.Max(hitstunLeft, airLeft + LandingFrames); // 空中では落ちるまで続く
+                    if (airLeft > 0) hitstunLeft = Mathf.Max(hitstunLeft, airLeft + Tuning.Sandbag.LandingFrames); // 空中では落ちるまで続く
                     else { hitstunLeft = info.Hitstun; staggered = false; }
                     break;
             }
@@ -234,7 +226,7 @@ namespace Fight3D
         void PlayLaunch()
         {
             if (Bag == null) return;
-            float airSeconds = AirFrames / 60f;
+            float airSeconds = Tuning.Sandbag.AirFrames / 60f;
             liftHandle.TryCancel();
             liftHandle = LMotion.Create(0f, 1f, airSeconds)
                 .Bind(this, (t, self) => self.liftHeight = 4f * 1.3f * t * (1f - t)) // 放物線(最高 1.3m)
@@ -281,7 +273,7 @@ namespace Fight3D
             if (blockstunLeft > 0) blockstunLeft--;
             if (framesSinceHit < 9999) framesSinceHit++;
 
-            if (framesSinceHit == RecoverFrames)
+            if (framesSinceHit == Tuning.Sandbag.RecoverFrames)
             {
                 Hp = MaxHp; // 2秒攻撃されないと全回復
             }

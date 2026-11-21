@@ -75,7 +75,7 @@ namespace Fight3D
             var kb = Keyboard.current;
             if (kb == null) return;
             if (kb.f1Key.wasPressedThisFrame && Sandbag != null) Sandbag.GuardEnabled = !Sandbag.GuardEnabled;
-            if (kb.f2Key.wasPressedThisFrame && Fighter != null) Fighter.AddGauge(FighterController.MaxGauge);
+            if (kb.f2Key.wasPressedThisFrame && Fighter != null) Fighter.AddGauge(Tuning.Fighter.MaxGauge);
         }
 
         /// <summary>文字の大きさや色の設定を作る(画面の高さに合わせて大きさを変える)</summary>
@@ -183,7 +183,7 @@ namespace Fight3D
             float lx = x + 20 * s, ly = y + 10 * s, lh = 34 * s;
 
             // ウルトゲージ
-            float g = Fighter.Gauge / FighterController.MaxGauge;
+            float g = Fighter.Gauge / Tuning.Fighter.MaxGauge;
             bool full = g >= 1f;
             GUI.Label(new Rect(lx, ly, 200 * s, lh), full ? "<b><color=#ffd34d>ウルト OK!</color></b>" : "ウルト", labelStyle);
             DrawBar(new Rect(lx + 170 * s, ly + 8 * s, w - 210 * s, 20 * s), g, full ? new Color(1f, 0.82f, 0.3f) : new Color(0.6f, 0.4f, 0.9f));
