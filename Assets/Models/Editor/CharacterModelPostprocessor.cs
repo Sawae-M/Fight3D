@@ -72,7 +72,23 @@ public class CharacterModelPostprocessor : AssetPostprocessor
         string n = material.name;
         bool shiny = n.Contains("Metal") || n.Contains("Gold") || n.Contains("Blade");
         material.SetFloat("_SpecStrength", shiny ? 0.6f : 0f); // [仮] 金属のハイライトの強さ
+
+        // 試合の画面で暗く沈まないように、影とまわりの明るさを少し明るめにする(2026-11-22、プレイテストの画面を見て調整)
+        material.SetColor("_ShadowColor", ShadowTint);
+        material.SetFloat("_Ambient", AmbientAmount);
+        material.SetFloat("_RimStrength", RimAmount);
     }
+
+    // ---- キャラの明るさの調整値(すべて [仮]) ----
+    /// <summary>影の部分の色(元の色に掛ける)。明るいほど影が軽くなる</summary>
+    private static readonly Color ShadowTint = new Color(0.72f, 0.66f, 0.86f);
+    /// <summary>まわりの明るさ。大きいほど全体が明るくなる</summary>
+    private const float AmbientAmount = 0.6f;
+    /// <summary>ふちの光の強さ。キャラの輪郭が背景から浮き上がる</summary>
+    private const float RimAmount = 0.4f;
+
+    /// <summary>この処理の版。数値を変えたら上げると、Unity がモデルを読み込み直す</summary>
+    public override uint GetVersion() => 2;
 
     /// <summary>
     /// アニメを読み込む前に呼ばれる。クリップ名から「Armature|」を外し、ループ・その場再生の設定をする。

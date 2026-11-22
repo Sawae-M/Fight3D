@@ -23,6 +23,7 @@
 
 - モデルは `Art/Blender` のスクリプトで作る: `build_kagetsu.py` / `build_gouga.py`(体・服・顔)、`kagetsu_anims.py` / `gouga_anims.py`(アニメ)、`char_builder.py`(共通の道具)
 - 作り直すとき(PowerShell): `& "D:\steam\steamapps\common\Blender\blender.exe" --background --python Art\Blender\build_kagetsu.py`
+- チェック: Unity のメニュー「Fight3D/モデルをチェック」(Humanoid・クリップ・シェーダー)と、Test Runner の PlayMode テスト `ModelPlayTest`(CPU同士で30秒試合させ、流れたアニメと画面を `Logs/PlayCheck` に保存)
 - 書き出した FBX は `Assets/Models/Characters/Resources/Fighters/` に入り、ゲームが自動で読み込む。読み込むときに Humanoid・クリップ名・ループ・トゥーンのマテリアルが自動で設定される(`Assets/Models/Editor/CharacterModelPostprocessor.cs`)
 
 ## 使っているパッケージ
