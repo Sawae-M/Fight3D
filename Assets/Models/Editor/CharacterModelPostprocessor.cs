@@ -16,11 +16,25 @@ public class CharacterModelPostprocessor : AssetPostprocessor
     private static readonly string[] LoopClips = { "Idle", "WalkForward", "WalkBack", "StrafeLeft", "StrafeRight", "Guard" };
 
     /// <summary>
+    /// アセットの読み込みが終わるたびに呼ばれる。トゥーンシェーダーが新しく読み込まれたら、キャラのモデルを読み込み直す。
+    /// (初めてプロジェクトを開いたとき、シェーダーより先にモデルが読み込まれると、トゥーンにならないため)
+    /// </summary>
+    private static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
+    {
+        if (!imported.Any(p => p.EndsWith("Fight3DToon.shader"))) return;
+        foreach (var guid in AssetDatabase.FindAssets("t:Model", new[] { CharacterFolder.TrimEnd('/') }))
+            AssetDatabase.ImportAsset(AssetDatabase.GUIDToAssetPath(guid), ImportAssetOptions.ForceUpdate);
+    }
+
+    /// <summary>
     /// モデルを読み込む前に呼ばれる。リグを Humanoid にし、拡大率を 1 にそろえる。
     /// </summary>
     private void OnPreprocessModel()
     {
         if (!assetPath.StartsWith(CharacterFolder)) return;
+
+        // トゥーンシェーダーが変わったり後から読み込まれたりしたら、このモデルも読み込み直す(マテリアルをトゥーンにするため)
+        context.DependsOnSourceAsset(ToonShaderPath);
 
         var importer = (ModelImporter)assetImporter;
         importer.animationType = ModelImporterAnimationType.Human; // 人型(Humanoid)にする
@@ -33,6 +47,9 @@ public class CharacterModelPostprocessor : AssetPostprocessor
 
     /// <summary>キャラに使うトゥーン(アニメ調)シェーダーの名前(Assets/Models/Shaders/Fight3DToon.shader)</summary>
     private const string ToonShaderName = "Fight3D/Toon";
+
+    /// <summary>トゥーンシェーダーのファイルの場所</summary>
+    private const string ToonShaderPath = "Assets/Models/Shaders/Fight3DToon.shader";
 
     /// <summary>
     /// モデルのマテリアルを読み込んだ後に呼ばれる。Blender の色を引き継いだまま、トゥーンシェーダーに切り替える。

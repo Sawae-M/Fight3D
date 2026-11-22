@@ -258,9 +258,9 @@ ANIMS = {
         (0, P()),
         (10, hips(-0.25, Spine=(30, 0, 0), Head=(25, 0, 0), **A((0, -85, 0), (0, 0, 0)),
                   LeftUpperLeg=(-50, -12, 0), LeftLowerLeg=(110, 0, 0), RightUpperLeg=(-10, 12, 0), RightLowerLeg=(110, 0, 0))),
-        (28, hips(-0.64, Hips=(80, 0, 15), Spine=(5, 0, 0), Head=(0, 0, 30), **A((0, -40, 40), (0, 0, 5)),
+        (28, hips(-0.64, Hips=(80, 0, 15), Spine=(5, 0, 0), Head=(0, 0, 30), **A((0, -5, -10), (0, 0, 10)),
                   LeftUpperLeg=(-15, -12, 0), LeftLowerLeg=(30, 0, 0), RightUpperLeg=(0, 12, 0), RightLowerLeg=(10, 0, 0))),
-        (60, hips(-0.65, Hips=(82, 0, 15), Spine=(5, 0, 0), Head=(0, 0, 30), **A((0, -40, 40), (0, 0, 5)),
+        (60, hips(-0.65, Hips=(82, 0, 15), Spine=(5, 0, 0), Head=(0, 0, 30), **A((0, -5, -10), (0, 0, 10)),
                   LeftUpperLeg=(-15, -12, 0), LeftLowerLeg=(30, 0, 0), RightUpperLeg=(0, 12, 0), RightLowerLeg=(10, 0, 0))),
     ]),
     # 勝ち: 胸を2回たたいてから、両腕を上げて吠える
