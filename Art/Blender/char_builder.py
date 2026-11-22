@@ -133,13 +133,14 @@ class Builder:
         o.name = name
         return self._finish(o, mat, bone, False, group)
 
-    def skin(self, name, points, edges, mat, subdiv=2, group="body", region="Hips"):
+    def skin(self, name, points, edges, mat, subdiv=2, group="body", region="Hips", rigid_bone=None):
         """骨組み(点と線)に肉付けして、なめらかな体の部品を作る(スキンモディファイア + 細分化)。
 
         points: [(位置, 半径), ...]。半径は数字1つ(丸)か (左右, 前後) の2つ。最初の点が根元になる。
         edges:  [(点の番号, 点の番号), ...] でつなぐ点の組。
         骨には「自動の重み」で付ける(関節のまわりがなめらかに曲がる)。先に armature() を呼んでおくこと。
         region: warp で体つきを変えるときに、この部品をどの骨の場所として扱うか。
+        rigid_bone: 指定すると、自動の重みではなく、その骨に100%で付ける(頭など、曲がらない部分用)。
         """
         if self.warp:
             moved = []
@@ -168,6 +169,12 @@ class Builder:
         o.data.materials.append(self.mats[mat])
         for p in o.data.polygons:
             p.use_smooth = True
+        if rigid_bone:
+            vg = o.vertex_groups.new(name=rigid_bone)
+            vg.add(list(range(len(o.data.vertices))), 1.0, "REPLACE")
+            bpy.ops.object.select_all(action="DESELECT")
+            self.parts.append((o, group))
+            return o
         # 自動の重み: 骨からの距離で、どの骨にどれだけ付くかを決める
         self.arm.select_set(True)
         bpy.context.view_layer.objects.active = self.arm
@@ -323,8 +330,8 @@ class Builder:
         cam.rotation_euler = (Vector(target) - Vector(pos)).to_track_quat("-Z", "Y").to_euler()
         cam.data.ortho_scale = ortho
 
-    def render_previews(self, prefix, height):
-        """正面・斜め・後ろの確認画像を出す。カメラを返す。"""
+    def render_previews(self, prefix, height, face=None):
+        """正面・斜め・後ろの確認画像を出す。face=(顔の中心の位置, 写す幅) なら顔のアップ(正面・斜め)も出す。カメラを返す。"""
         cam = self.setup_render()
         mid = height / 2
         views = {"front": (0, -6, mid), "angle": (-4.2, -4.2, mid + 0.6), "back": (2.5, 5.5, mid + 0.3)}
@@ -332,7 +339,33 @@ class Builder:
             self.aim(cam, pos, (0, 0, mid), height * 1.45)  # 縦長の画像なので、横に広げた腕が入る幅にする
             bpy.context.scene.render.filepath = prefix + key + ".png"
             bpy.ops.render.render(write_still=True)
+        if face:
+            center, size = Vector(face[0]), face[1]
+            scn = bpy.context.scene
+            res = scn.render.resolution_x, scn.render.resolution_y
+            scn.render.resolution_x = scn.render.resolution_y = 900
+            for key, offset in {"face": (0, -3, 0.15), "face_angle": (-2.2, -2.2, 0.3)}.items():
+                self.aim(cam, center + Vector(offset), center, size)
+                scn.render.filepath = prefix + key + ".png"
+                bpy.ops.render.render(write_still=True)
+            scn.render.resolution_x, scn.render.resolution_y = res
         return cam
+
+    def mesh_part(self, name, verts, faces, mat, bone, smooth=True, group="body", thickness=0.0):
+        """頂点と面のリストから部品を作る(仮面など、形を細かく作りたい物用)。thickness で厚みを付ける。"""
+        me = bpy.data.meshes.new(name)
+        me.from_pydata(verts, [], faces)
+        me.update()
+        o = bpy.data.objects.new(name, me)
+        bpy.context.collection.objects.link(o)
+        if thickness:
+            bpy.ops.object.select_all(action="DESELECT")
+            bpy.context.view_layer.objects.active = o
+            o.select_set(True)
+            mod = o.modifiers.new("Solidify", "SOLIDIFY")
+            mod.thickness = thickness
+            bpy.ops.object.modifier_apply(modifier="Solidify")
+        return self._finish(o, mat, bone, smooth, group)
 
 
 # ---------------------------------------------------------------
