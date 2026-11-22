@@ -48,6 +48,7 @@ COLORS = {
     "KG_Hair":    ((0.82, 0.84, 0.90), 0.0, 0.5),   # 銀の髪
     "KG_Blade":   ((0.75, 0.80, 0.90), 1.0, 0.15),  # 刃
     "KG_Eclipse": ((0.02, 0.02, 0.03), 0.3, 0.3),   # 月蝕の黒い円盤
+    "KG_Glow":    ((1.00, 0.18, 0.22), 0.0, 0.3),   # 仮面の奥で赤く光る目
 }
 
 # 骨(名前: (頭, しっぽ, 親))。Z が上、キャラは -Y を向く、左手は +X。前の版と同じ位置
@@ -217,19 +218,102 @@ def coat_skirt(b):
     o.select_set(False)
 
 
+# ---------------------------------------------------------------
+# 顔(2026-11-22 作り込み)。仮面は鼻筋・眉・ほお骨・あごのある立体的な形にする。数値はすべて仮
+# ---------------------------------------------------------------
+MASK_CENTER = (0.0, -0.062, 1.785)   # 仮面の楕円の中心
+MASK_RADIUS = (0.090, 0.060, 0.118)  # 仮面の大きさ(左右, 前後, 上下の半径)
+EYE_X, EYE_Z = 0.42, 0.10            # 目の位置(仮面の大きさに対する割合)
+
+
+def _bump(x, z, cx, cz, sx, sz):
+    """(cx, cz) を中心にした、なだらかな山の高さ(0〜1)。sx, sz は山の広さ。"""
+    import math
+    return math.exp(-(((x - cx) / sx) ** 2 + ((z - cz) / sz) ** 2))
+
+
+def mask_depth(x, z):
+    """仮面の表面の前後位置(楕円の半径に対する割合。マイナスが前)。x, z は -1〜1 の割合。"""
+    import math
+    y = -math.sqrt(max(0.0, 1.0 - x * x - z * z))
+    y -= 0.20 * _bump(x, z, 0.0, -0.18, 0.12, 0.30)             # 鼻筋
+    y -= 0.08 * _bump(x, z, 0.0, 0.30, 0.70, 0.08)              # 眉の盛り上がり
+    y -= 0.06 * (_bump(x, z, 0.55, -0.12, 0.18, 0.15) + _bump(x, z, -0.55, -0.12, 0.18, 0.15))  # ほお骨
+    y += 0.07 * (_bump(x, z, EYE_X, EYE_Z, 0.20, 0.11) + _bump(x, z, -EYE_X, EYE_Z, 0.20, 0.11))  # 目のくぼみ
+    return y
+
+
+def mask_point(x, z, lift=0.0):
+    """仮面の表面の点(ワールド座標)。lift だけ表面から前に出す(m)。"""
+    cx, cy, cz = MASK_CENTER
+    rx, ry, rz = MASK_RADIUS
+    return (cx + x * rx, cy + mask_depth(x, z) * ry - lift, cz + z * rz)
+
+
+def build_mask(b, nu=28, nv=24):
+    """立体的な仮面のメッシュを作る。下に行くほど細く、あごがとがった形。"""
+    import math
+    verts, faces = [], []
+    for j in range(nv + 1):
+        z = 0.97 - 1.94 * j / nv
+        width = math.sqrt(max(0.0, 1.0 - z * z)) * 0.98
+        if z < -0.35:
+            width *= 1.0 - 0.45 * ((-0.35 - z) / 0.62)  # あごをとがらせる
+        for i in range(nu + 1):
+            x = (-1.0 + 2.0 * i / nu) * width
+            verts.append(mask_point(x, z))
+    for j in range(nv):
+        for i in range(nu):
+            a = j * (nu + 1) + i
+            faces.append((a, a + nu + 1, a + nu + 2, a + 1))  # 表が前を向く順番
+    b.mesh_part("Mask", verts, faces, "KG_Mask", "Head", thickness=0.006)
+
+
+def build_head(b):
+    """カゲツの頭: フード、立体的な仮面、赤く光る目、前髪、模様、髪束。"""
+    # フード(顔のまわりに縁取り)
+    b.ball("Hood", (0, 0.03, 1.80), (0.115, 0.12, 0.132), "KG_Cloth", "Head")
+    b.ring("HoodRim", (0, -0.065, 1.79), 0.104, 0.013, "KG_Cloth", "Head", rot=(90, 0, 0))
+    b.limb("HoodDrape", (0, 0.07, 1.74), (0, 0.105, 1.56), 0.095, 0.125, "KG_Cloth", "Head", squash=0.6)
+    b.limb("HoodPeak", (0, 0.06, 1.89), (0, 0.18, 1.90), 0.05, 0.004, "KG_Cloth", "Head")  # 後ろにとがったフードの先
+
+    build_mask(b)
+    import math
+    for s, side in ((1, "L"), (-1, "R")):
+        # 目の穴: 目尻がつり上がったアーモンド形の黒い穴
+        ex, ey, ez = mask_point(s * EYE_X, EYE_Z, lift=0.003)
+        b.ball(f"EyeHole{side}", (ex, ey, ez), (0.026, 0.008, 0.0095), "KG_Black", "Head", rot=(0, -s * 16, 0))
+        # 穴の奥で赤く光る目(少し内側寄り)
+        b.ball(f"EyeGlow{side}", (ex - s * 0.004, ey - 0.004, ez - 0.001), (0.0075, 0.004, 0.0065), "KG_Glow", "Head")
+        # 目の下の赤い隈取り(下へ流れる線)
+        tx, ty, tz = mask_point(s * 0.47, -0.22, lift=0.002)
+        b.box(f"TearMark{side}", (tx, ty, tz), (0.0035, 0.004, 0.032), "KG_Crimson", "Head", rot=(0, -s * 12, 0))
+    # 口元: 細い赤の縦線を3本(縫い目のような模様)
+    for k, dx in enumerate((-0.012, 0.0, 0.012)):
+        mx, my, mz = mask_point(dx / MASK_RADIUS[0], -0.55, lift=0.002)
+        b.box(f"MouthLine{k}", (mx, my, mz), (0.003, 0.004, 0.028 if dx == 0 else 0.02), "KG_Crimson", "Head")
+    # 左のこめかみのひび
+    cx_, cy_, cz_ = mask_point(0.62, 0.42, lift=0.002)
+    b.box("Crack", (cx_, cy_, cz_), (0.003, 0.004, 0.05), "KG_Black", "Head", rot=(0, 30, 0))
+    # 額の月蝕の飾り
+    fx, fy, fz = mask_point(0.0, 0.62, lift=0.004)
+    b.disc("Eclipse", (fx, fy, fz), 0.012, 0.006, "KG_Eclipse", "Head", rot=(76, 0, 0))
+    b.ring("EclipseRing", (fx, fy, fz), 0.0145, 0.003, "KG_Gold", "Head", rot=(76, 0, 0))
+    # 前髪: フードの下から仮面の両わきにかかる銀の髪(アニメっぽいとがった束)
+    for k, (x0, x1, ln) in enumerate(((0.072, 0.082, 0.10), (0.052, 0.068, 0.07), (-0.072, -0.082, 0.10),
+                                      (-0.052, -0.068, 0.07))):
+        top = (x0, -0.088, 1.885)
+        tip = (x1, -0.112, 1.885 - ln)
+        b.limb(f"Bang{k}", top, tip, 0.016, 0.002, "KG_Hair", "Head", seg=6)
+    # 後ろの髪束と、赤い髪留め
+    b.limb("Ponytail", (0, 0.11, 1.80), (0, 0.25, 1.38), 0.034, 0.006, "KG_Hair", "Head")
+    b.limb("Ponytail2", (0.015, 0.12, 1.78), (0.05, 0.22, 1.47), 0.022, 0.004, "KG_Hair", "Head")
+    b.ring("HairTie", (0, 0.125, 1.775), 0.03, 0.009, "KG_Crimson", "Head", rot=(70, 0, 0))
+
+
 def build_gear(b):
     """仮面・フード・帯・肩当て・剣など、硬い物の部品(1つの骨に100%)。"""
-    # --- 頭: フードと白い仮面、月蝕の額飾り ---
-    b.ball("Hood", (0, 0.025, 1.80), (0.112, 0.118, 0.128), "KG_Cloth", "Head")
-    b.limb("HoodDrape", (0, 0.07, 1.74), (0, 0.105, 1.56), 0.095, 0.125, "KG_Cloth", "Head", squash=0.6)
-    b.ball("Mask", (0, -0.078, 1.785), (0.092, 0.045, 0.118), "KG_Mask", "Head")
-    # 三日月形に見える、つり上がった目の切れ込み
-    b.box("MaskEyeL", (0.040, -0.120, 1.80), (0.052, 0.012, 0.011), "KG_Black", "Head", rot=(0, -18, 0))
-    b.box("MaskEyeR", (-0.040, -0.120, 1.80), (0.052, 0.012, 0.011), "KG_Black", "Head", rot=(0, 18, 0))
-    b.box("MaskLine", (0, -0.121, 1.725), (0.008, 0.01, 0.065), "KG_Crimson", "Head")  # 口元の赤い一本線
-    b.disc("Eclipse", (0, -0.118, 1.858), 0.019, 0.01, "KG_Eclipse", "Head", rot=(90, 0, 0))
-    b.ring("EclipseRing", (0, -0.118, 1.858), 0.023, 0.0045, "KG_Gold", "Head", rot=(90, 0, 0))
-    b.limb("Ponytail", (0, 0.11, 1.80), (0, 0.24, 1.40), 0.033, 0.008, "KG_Hair", "Head")
+    build_head(b)
 
     # --- 首まわり: 赤い襟巻き(後ろに長くたなびく) ---
     b.ring("Scarf", (0, 0.005, 1.585), 0.062, 0.04, "KG_Crimson", "Neck")
@@ -284,7 +368,7 @@ def main():
     cb.build_actions(arm, kagetsu_anims.ANIMS)
     b.export_fbx(FBX_PATH)
     b.toon_preview()  # 確認画像だけトゥーン調にする(FBX は書き出し済み)
-    cam = b.render_previews(PREVIEW_PREFIX, HEIGHT)
+    cam = b.render_previews(PREVIEW_PREFIX, HEIGHT, face=((0, -0.05, 1.86), 0.45))  # 顔のアップも出す
     cb.render_contact_sheet(arm, kagetsu_anims.ANIMS, cam, PREVIEW_PREFIX + "anims.png", HEIGHT)
     bpy.data.objects.remove(cam)
     bpy.ops.wm.save_as_mainfile(filepath=BLEND_PATH)
