@@ -44,6 +44,9 @@ namespace Fight3D
         float freeTime;                    // くり返しアニメの再生時間(秒)
         Vector3 lastPos;                   // 前のフレームの位置(歩く速さを測る)
 
+        /// <summary>今流しているアニメの名前(テストや画面表示用)</summary>
+        public string CurrentClip => nowName;
+
         /// <summary>
         /// モデルにアニメの再生役を付ける。animator はモデルの Animator(Humanoid のアバター入り)、
         /// clipList はモデルの FBX に入っているクリップ全部。
