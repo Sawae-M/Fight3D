@@ -101,7 +101,7 @@ namespace Fight3D
         float breathY;  // 呼吸で上下する量(m)
         float liftHeight;  // 浮きで持ち上がっている高さ(m)
         MotionHandle liftHandle;  // 浮きの LitMotion のアニメ
-        Renderer maskRenderer;  // 仮面の見た目(仮面解放で色を変える)
+        Material maskMaterial;  // 仮面のマテリアル(仮面解放で色を変える)。人形は Mask の部品、本番モデルは KG_Mask のマテリアル
         Color maskBaseColor;  // 仮面の元の色
         MotionHandle maskPulse;  // 仮面が脈打つ LitMotion のアニメ
         bool kamenVisualOn;  // 仮面解放の見た目が今ついているか
@@ -124,12 +124,28 @@ namespace Fight3D
                     .AddTo(gameObject);
 
                 var mask = visual.Find("Mask");
-                if (mask != null)
+                if (mask != null) maskMaterial = mask.GetComponent<Renderer>().material;
+            }
+            if (visual != null && HasAnimatedModel) maskMaterial = FindModelMaterial(MaskMaterialName);
+            if (maskMaterial != null) maskBaseColor = maskMaterial.color;
+        }
+
+        /// <summary>本番モデルの仮面のマテリアル名(Blender の build_kagetsu.py の COLORS と同じ)</summary>
+        const string MaskMaterialName = "KG_Mask";
+
+        /// <summary>本番モデルの中から、名前が name で始まるマテリアルを探す(見つからなければ null)。そのキャラ専用の複製を返す</summary>
+        Material FindModelMaterial(string name)
+        {
+            foreach (var r in visual.GetComponentsInChildren<Renderer>())
+            {
+                var shared = r.sharedMaterials;
+                for (int i = 0; i < shared.Length; i++)
                 {
-                    maskRenderer = mask.GetComponent<Renderer>();
-                    maskBaseColor = maskRenderer.material.color;
+                    if (shared[i] == null || !shared[i].name.StartsWith(name)) continue;
+                    return r.materials[i];  // このキャラ専用の複製(もう1人のキャラに色が移らない)
                 }
             }
+            return null;
         }
 
         /// <summary>消えるときに呼ばれる。入力を片付ける</summary>
@@ -891,7 +907,7 @@ namespace Fight3D
         /// <summary>仮面解放中は仮面が赤く脈打つ(LitMotion)</summary>
         void UpdateMask()
         {
-            if (maskRenderer == null) return;
+            if (maskMaterial == null) return;
             bool on = Kit is KagetsuSkills kagetsu && kagetsu.KamenActive;  // 仮面があるのはカゲツだけ
             if (on == kamenVisualOn) return;
             kamenVisualOn = on;
@@ -904,12 +920,12 @@ namespace Fight3D
                 maskPulse = LMotion.Create(0f, 1f, 0.35f)
                     .WithEase(Ease.InOutSine)
                     .WithLoops(-1, LoopType.Yoyo)
-                    .Bind(maskRenderer, (t, r) => r.material.color = Color.Lerp(dark, red, t))
+                    .Bind(maskMaterial, (t, m) => m.color = Color.Lerp(dark, red, t))
                     .AddTo(gameObject);
             }
             else
             {
-                maskRenderer.material.color = maskBaseColor;
+                maskMaterial.color = maskBaseColor;
             }
         }
     }
