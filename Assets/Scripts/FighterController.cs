@@ -27,6 +27,7 @@ namespace Fight3D
         public bool TrainingMode;           // トレーニング中か(R キーでリセットできる)
         public bool Frozen;                 // 止まっているか(ラウンド開始前・K.O. の後など。BattleManager が切り替える)
         public bool KnockedDown;            // K.O. されて倒れているか(見た目だけ)
+        public bool HasAnimatedModel;       // 本番の3Dモデル(アニメ付き)を使っているか。true なら呼吸の上下と体の傾けはアニメに任せる
 
         // ---- 外から見る用(画面表示など) ----
         public float Gauge { get; private set; }  // 今のウルトゲージ(0〜100)
@@ -50,6 +51,12 @@ namespace Fight3D
         public bool MoveContacted => current != null && contacted;  // 今の技が当たった or ガードされたか(次の技につなげられる)
         public Command CurrentCommand => currentCommand;  // 今の技を出したボタン
         public int AttackFrameNow => attackFrame;  // 今の技の何F目か
+
+        // ---- アニメ(CharacterAnimator)が見る用 ----
+        public MoveData CurrentMove => current;  // 今出している技(出していなければ null)
+        public int DodgeFrameNow => dodgeFrame;  // 回避の何F目か(回避中でなければ 0)
+        public int FramesSinceHitTaken => framesSinceHitTaken;  // 最後に攻撃を受けてからのフレーム数
+        public HitEffect LastHitEffect { get; private set; }  // 最後に受けた攻撃の効果(のけぞり・よろけ・浮き)
         public int MoveSerial { get; private set; }  // 技を出すたびに 1 増える番号(同じ技に2回反応しないため)
         public bool CanAct => stunLeft == 0 && blockLeft == 0 && current == null && dodgeFrame == 0 && !Frozen;  // 自由に動ける状態か
         public float DistanceToOpponent => Target != null ? FlatDistanceToTarget() : 999f;  // 相手との水平な距離(m)。相手がいないときは 999
@@ -107,7 +114,7 @@ namespace Fight3D
             Hp = MaxHp;
             if (Cpu == null) input = new FightInput();  // CPU はキーボードを使わない
             visual = transform.Find("Visual");
-            if (visual != null)
+            if (visual != null && !HasAnimatedModel)
             {
                 // 待機中の呼吸(LitMotion でゆっくり上下させる。実際に動かすのは UpdateVisuals)
                 LMotion.Create(0f, 0.025f, 1.1f)
@@ -550,6 +557,7 @@ namespace Fight3D
             dodgeBuffered = false;
             IsGuarding = false;
 
+            LastHitEffect = info.Effect;
             switch (info.Effect)
             {
                 case HitEffect.Launch:
@@ -869,7 +877,7 @@ namespace Fight3D
         /// <summary>回避中は進む方向に体を傾ける</summary>
         void UpdateBodyLean()
         {
-            if (visual == null) return;
+            if (visual == null || HasAnimatedModel) return;  // 本番モデルは倒れる・回避の動きをアニメでする
             Quaternion want = Quaternion.identity;
             if (KnockedDown) want = Quaternion.Euler(-80f, 0f, 0f);  // K.O.: 後ろに倒れる
             else if (dodgeFrame > 0)

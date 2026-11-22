@@ -6,7 +6,7 @@
   & "D:\steam\steamapps\common\Blender\blender.exe" --background --python Art\Blender\build_kagetsu.py
 
 出力:
-  Assets/Models/Characters/Kagetsu/Kagetsu.fbx   … Unity が読む本体(Humanoid 対応の骨入り・アニメ入り)
+  Assets/Models/Characters/Resources/Fighters/Kagetsu.fbx   … Unity が読む本体(Humanoid 対応の骨入り・アニメ入り)
   Art/Blender/Kagetsu.blend                      … Blender で開いて直す用
   Art/Blender/Kagetsu_preview_*.png              … 見た目確認用の画像
 
@@ -31,7 +31,7 @@ import kagetsu_anims  # noqa: E402
 # 調整する数値はここに集める(すべて仮。仕様書にまだ無い値)
 # ---------------------------------------------------------------
 PROJECT = os.path.normpath(os.path.join(HERE, "..", ".."))
-FBX_PATH = os.path.join(PROJECT, "Assets", "Models", "Characters", "Kagetsu", "Kagetsu.fbx")
+FBX_PATH = os.path.join(PROJECT, "Assets", "Models", "Characters", "Resources", "Fighters", "Kagetsu.fbx")  # ゲームが Resources から読み込む
 BLEND_PATH = os.path.join(HERE, "Kagetsu.blend")
 PREVIEW_PREFIX = os.path.join(HERE, "Kagetsu_preview_")
 HEIGHT = 1.95  # 身長(m)。確認画像のカメラに使う

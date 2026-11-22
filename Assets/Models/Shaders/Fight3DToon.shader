@@ -7,7 +7,7 @@ Shader "Fight3D/Toon"
 {
     Properties
     {
-        _BaseColor ("色", Color) = (1, 1, 1, 1)
+        [MainColor] _BaseColor ("色", Color) = (1, 1, 1, 1)
         _ShadowColor ("影の色(色に掛ける)", Color) = (0.55, 0.5, 0.7, 1)
         _ShadowThreshold ("影の境目(0〜1)", Range(0, 1)) = 0.5
         _ShadowSoftness ("影の境目のぼかし", Range(0.001, 0.3)) = 0.02

@@ -6,7 +6,7 @@
   & "D:\steam\steamapps\common\Blender\blender.exe" --background --python Art\Blender\build_gouga.py
 
 出力:
-  Assets/Models/Characters/Gouga/Gouga.fbx   … Unity が読む本体(Humanoid 対応の骨入り・アニメ入り)
+  Assets/Models/Characters/Resources/Fighters/Gouga.fbx   … Unity が読む本体(Humanoid 対応の骨入り・アニメ入り)
   Art/Blender/Gouga.blend                    … Blender で開いて直す用
   Art/Blender/Gouga_preview_*.png            … 見た目確認用の画像
 
@@ -29,7 +29,7 @@ import gouga_anims  # noqa: E402
 # 調整する数値はここに集める(すべて仮。仕様書にまだ無い値)
 # ---------------------------------------------------------------
 PROJECT = os.path.normpath(os.path.join(HERE, "..", ".."))
-FBX_PATH = os.path.join(PROJECT, "Assets", "Models", "Characters", "Gouga", "Gouga.fbx")
+FBX_PATH = os.path.join(PROJECT, "Assets", "Models", "Characters", "Resources", "Fighters", "Gouga.fbx")  # ゲームが Resources から読み込む
 BLEND_PATH = os.path.join(HERE, "Gouga.blend")
 PREVIEW_PREFIX = os.path.join(HERE, "Gouga_preview_")
 HEIGHT = 2.2  # 身長(m)。確認画像のカメラに使う
