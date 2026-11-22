@@ -83,19 +83,30 @@ namespace Fight3D
             EnsureLight();
         }
 
-        /// <summary>キャラ(人形 + FighterController)を1人作る</summary>
+        /// <summary>キャラ(見た目 + FighterController)を1人作る。本番の3Dモデルがあればそれを、無ければ人形を使う</summary>
         static FighterController BuildFighter(CharacterId id, Vector3 position)
         {
             Transform swordPivot;  // 剣(ゴウガは右腕)の支点
-            GameObject go = id == CharacterId.Gouga
-                ? DollBuilder.BuildGouga(out swordPivot)
-                : DollBuilder.BuildKagetsu(out swordPivot);
+            string modelName = id == CharacterId.Gouga ? "Gouga" : "Kagetsu";
+            GameObject go = DollBuilder.TryBuildModel(modelName, out swordPivot, out var animator, out var clips);
+            bool hasModel = go != null;
+            if (!hasModel)
+            {
+                go = id == CharacterId.Gouga
+                    ? DollBuilder.BuildGouga(out swordPivot)
+                    : DollBuilder.BuildKagetsu(out swordPivot);
+            }
             go.transform.SetParent(root.transform, false);
             go.transform.position = position;
             var fighter = go.AddComponent<FighterController>();
             fighter.Kit = id == CharacterId.Gouga ? new GougaSkills() : (CharacterKit)new KagetsuSkills();
             fighter.SwordPivot = swordPivot;
             fighter.StartPosition = position;
+            if (hasModel)
+            {
+                fighter.HasAnimatedModel = true;
+                CharacterAnimator.Attach(go, animator, fighter, clips);  // 状態に合わせてアニメを流す
+            }
             return fighter;
         }
 

@@ -27,6 +27,7 @@ namespace Fight3D
         public bool TrainingMode;           // トレーニング中か(R キーでリセットできる)
         public bool Frozen;                 // 止まっているか(ラウンド開始前・K.O. の後など。BattleManager が切り替える)
         public bool KnockedDown;            // K.O. されて倒れているか(見た目だけ)
+        public bool HasAnimatedModel;       // 本番の3Dモデル(アニメ付き)を使っているか。true なら呼吸の上下と体の傾けはアニメに任せる
 
         // ---- 外から見る用(画面表示など) ----
         public float Gauge { get; private set; }  // 今のウルトゲージ(0〜100)
@@ -50,6 +51,12 @@ namespace Fight3D
         public bool MoveContacted => current != null && contacted;  // 今の技が当たった or ガードされたか(次の技につなげられる)
         public Command CurrentCommand => currentCommand;  // 今の技を出したボタン
         public int AttackFrameNow => attackFrame;  // 今の技の何F目か
+
+        // ---- アニメ(CharacterAnimator)が見る用 ----
+        public MoveData CurrentMove => current;  // 今出している技(出していなければ null)
+        public int DodgeFrameNow => dodgeFrame;  // 回避の何F目か(回避中でなければ 0)
+        public int FramesSinceHitTaken => framesSinceHitTaken;  // 最後に攻撃を受けてからのフレーム数
+        public HitEffect LastHitEffect { get; private set; }  // 最後に受けた攻撃の効果(のけぞり・よろけ・浮き)
         public int MoveSerial { get; private set; }  // 技を出すたびに 1 増える番号(同じ技に2回反応しないため)
         public bool CanAct => stunLeft == 0 && blockLeft == 0 && current == null && dodgeFrame == 0 && !Frozen;  // 自由に動ける状態か
         public float DistanceToOpponent => Target != null ? FlatDistanceToTarget() : 999f;  // 相手との水平な距離(m)。相手がいないときは 999
@@ -94,7 +101,7 @@ namespace Fight3D
         float breathY;  // 呼吸で上下する量(m)
         float liftHeight;  // 浮きで持ち上がっている高さ(m)
         MotionHandle liftHandle;  // 浮きの LitMotion のアニメ
-        Renderer maskRenderer;  // 仮面の見た目(仮面解放で色を変える)
+        Material maskMaterial;  // 仮面のマテリアル(仮面解放で色を変える)。人形は Mask の部品、本番モデルは KG_Mask のマテリアル
         Color maskBaseColor;  // 仮面の元の色
         MotionHandle maskPulse;  // 仮面が脈打つ LitMotion のアニメ
         bool kamenVisualOn;  // 仮面解放の見た目が今ついているか
@@ -107,7 +114,7 @@ namespace Fight3D
             Hp = MaxHp;
             if (Cpu == null) input = new FightInput();  // CPU はキーボードを使わない
             visual = transform.Find("Visual");
-            if (visual != null)
+            if (visual != null && !HasAnimatedModel)
             {
                 // 待機中の呼吸(LitMotion でゆっくり上下させる。実際に動かすのは UpdateVisuals)
                 LMotion.Create(0f, 0.025f, 1.1f)
@@ -117,12 +124,28 @@ namespace Fight3D
                     .AddTo(gameObject);
 
                 var mask = visual.Find("Mask");
-                if (mask != null)
+                if (mask != null) maskMaterial = mask.GetComponent<Renderer>().material;
+            }
+            if (visual != null && HasAnimatedModel) maskMaterial = FindModelMaterial(MaskMaterialName);
+            if (maskMaterial != null) maskBaseColor = maskMaterial.color;
+        }
+
+        /// <summary>本番モデルの仮面のマテリアル名(Blender の build_kagetsu.py の COLORS と同じ)</summary>
+        const string MaskMaterialName = "KG_Mask";
+
+        /// <summary>本番モデルの中から、名前が name で始まるマテリアルを探す(見つからなければ null)。そのキャラ専用の複製を返す</summary>
+        Material FindModelMaterial(string name)
+        {
+            foreach (var r in visual.GetComponentsInChildren<Renderer>())
+            {
+                var shared = r.sharedMaterials;
+                for (int i = 0; i < shared.Length; i++)
                 {
-                    maskRenderer = mask.GetComponent<Renderer>();
-                    maskBaseColor = maskRenderer.material.color;
+                    if (shared[i] == null || !shared[i].name.StartsWith(name)) continue;
+                    return r.materials[i];  // このキャラ専用の複製(もう1人のキャラに色が移らない)
                 }
             }
+            return null;
         }
 
         /// <summary>消えるときに呼ばれる。入力を片付ける</summary>
@@ -550,6 +573,7 @@ namespace Fight3D
             dodgeBuffered = false;
             IsGuarding = false;
 
+            LastHitEffect = info.Effect;
             switch (info.Effect)
             {
                 case HitEffect.Launch:
@@ -869,7 +893,7 @@ namespace Fight3D
         /// <summary>回避中は進む方向に体を傾ける</summary>
         void UpdateBodyLean()
         {
-            if (visual == null) return;
+            if (visual == null || HasAnimatedModel) return;  // 本番モデルは倒れる・回避の動きをアニメでする
             Quaternion want = Quaternion.identity;
             if (KnockedDown) want = Quaternion.Euler(-80f, 0f, 0f);  // K.O.: 後ろに倒れる
             else if (dodgeFrame > 0)
@@ -883,7 +907,7 @@ namespace Fight3D
         /// <summary>仮面解放中は仮面が赤く脈打つ(LitMotion)</summary>
         void UpdateMask()
         {
-            if (maskRenderer == null) return;
+            if (maskMaterial == null) return;
             bool on = Kit is KagetsuSkills kagetsu && kagetsu.KamenActive;  // 仮面があるのはカゲツだけ
             if (on == kamenVisualOn) return;
             kamenVisualOn = on;
@@ -896,12 +920,12 @@ namespace Fight3D
                 maskPulse = LMotion.Create(0f, 1f, 0.35f)
                     .WithEase(Ease.InOutSine)
                     .WithLoops(-1, LoopType.Yoyo)
-                    .Bind(maskRenderer, (t, r) => r.material.color = Color.Lerp(dark, red, t))
+                    .Bind(maskMaterial, (t, m) => m.color = Color.Lerp(dark, red, t))
                     .AddTo(gameObject);
             }
             else
             {
-                maskRenderer.material.color = maskBaseColor;
+                maskMaterial.color = maskBaseColor;
             }
         }
     }

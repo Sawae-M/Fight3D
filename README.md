@@ -17,6 +17,13 @@
 - ゴウガ(F5 でカゲツと切り替え): 通常攻撃(ダメージ1.15倍・出が+2F)、歩く速さ0.85倍、岩砕き(P、衝撃波で浮き)、剛腕引き(W+P、つかんで引き寄せ)、受け止め(S+P、当て身反撃)、ウルト大地崩し(O+P、体力が少ないほど強い)、パッシブ不屈(体力が減ると攻撃力アップ・1回だけ体力1で耐える)
 - CPU対戦(F6 でトレーニングと切り替え): 自分が選んでいない方のキャラが CPU。99秒・2本先取、時間切れは体力の割合で判定。R でやり直し
 - トレーニング設定: F3 でサンドバッグが殴ってくる(受け止め・ガード・回避の練習用)、F4 で自分の体力を 100% → 50% → 25% → 10% に切り替え
+- カゲツとゴウガは本番の3Dモデル(Blender で作成、トゥーン調)で表示され、待機・歩き・技・ガード・回避・やられ・K.O.・勝ちのアニメが動きに合わせて流れる。モデルが無いときは人形の仮モデルになる(2026-11-22 追加)
+
+## 3Dモデルの作り方(Blender)
+
+- モデルは `Art/Blender` のスクリプトで作る: `build_kagetsu.py` / `build_gouga.py`(体・服・顔)、`kagetsu_anims.py` / `gouga_anims.py`(アニメ)、`char_builder.py`(共通の道具)
+- 作り直すとき(PowerShell): `& "D:\steam\steamapps\common\Blender\blender.exe" --background --python Art\Blender\build_kagetsu.py`
+- 書き出した FBX は `Assets/Models/Characters/Resources/Fighters/` に入り、ゲームが自動で読み込む。読み込むときに Humanoid・クリップ名・ループ・トゥーンのマテリアルが自動で設定される(`Assets/Models/Editor/CharacterModelPostprocessor.cs`)
 
 ## 使っているパッケージ
 
@@ -64,7 +71,8 @@
 | Sandbag.cs | サンドバッグ(体力・連続技の記録・揺れ・引き寄せられる・殴ってくる設定) |
 | CameraRig.cs | 背後カメラ(Cinemachine) |
 | TrainingHUD.cs | ダメージ数字と右上・左上の表示 |
-| DollBuilder.cs | 人形の仮モデル(カゲツ・ゴウガ・サンドバッグ)を図形で作る |
+| DollBuilder.cs | キャラの見た目を作る。本番の3Dモデルを読み込む(無ければ人形の仮モデル(カゲツ・ゴウガ・サンドバッグ)を図形で作る) |
+| CharacterAnimator.cs | 本番の3Dモデルのアニメを、キャラの状態(技・ガード・回避・やられ・移動)に合わせて流す |
 | Arena.cs | ステージの大きさと見えない壁 |
 | FightInput.cs | 入力(Input System) |
 

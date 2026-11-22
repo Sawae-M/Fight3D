@@ -6,7 +6,7 @@
   & "D:\steam\steamapps\common\Blender\blender.exe" --background --python Art\Blender\build_gouga.py
 
 出力:
-  Assets/Models/Characters/Gouga/Gouga.fbx   … Unity が読む本体(Humanoid 対応の骨入り・アニメ入り)
+  Assets/Models/Characters/Resources/Fighters/Gouga.fbx   … Unity が読む本体(Humanoid 対応の骨入り・アニメ入り)
   Art/Blender/Gouga.blend                    … Blender で開いて直す用
   Art/Blender/Gouga_preview_*.png            … 見た目確認用の画像
 
@@ -29,7 +29,7 @@ import gouga_anims  # noqa: E402
 # 調整する数値はここに集める(すべて仮。仕様書にまだ無い値)
 # ---------------------------------------------------------------
 PROJECT = os.path.normpath(os.path.join(HERE, "..", ".."))
-FBX_PATH = os.path.join(PROJECT, "Assets", "Models", "Characters", "Gouga", "Gouga.fbx")
+FBX_PATH = os.path.join(PROJECT, "Assets", "Models", "Characters", "Resources", "Fighters", "Gouga.fbx")  # ゲームが Resources から読み込む
 BLEND_PATH = os.path.join(HERE, "Gouga.blend")
 PREVIEW_PREFIX = os.path.join(HERE, "Gouga_preview_")
 HEIGHT = 2.2  # 身長(m)。確認画像のカメラに使う
@@ -93,26 +93,58 @@ def chain(points):
     return [(i, i + 1) for i in range(len(points) - 1)]
 
 
+def build_head(b):
+    """ゴウガの頭(2026-11-22 作り込み): 鼻先までつながった頭、ほおの毛、白目と黒目のある怒った目、口と牙。数値はすべて仮。"""
+    # 頭の形: 後ろ頭 → 顔の中心 → 鼻の付け根。左右に、ふくらんだほお
+    cranium = [
+        # 肉付け+細分化で3割ほど小さくなるので、半径は大きめに書く
+        ((0, 0.04, 1.94), (0.23, 0.23)),      # 0 後ろ頭
+        ((0, -0.05, 1.95), (0.25, 0.24)),     # 1 顔の中心
+        ((0, -0.12, 1.90), (0.17, 0.14)),     # 2 鼻の付け根
+        ((0.13, -0.08, 1.86), 0.11),          # 3 左のほお
+        ((-0.13, -0.08, 1.86), 0.11),         # 4 右のほお
+    ]
+    b.skin("Cranium", cranium, [(0, 1), (1, 2), (1, 3), (1, 4)], "GG_Fur", region="Head", rigid_bone="Head")
+    # 鼻先(明るい茶色): 前に突き出たマズル
+    muzzle = [
+        ((0, -0.11, 1.87), (0.14, 0.12)),
+        ((0, -0.19, 1.875), (0.12, 0.10)),
+        ((0, -0.245, 1.88), (0.08, 0.07)),
+    ]
+    b.skin("Muzzle", muzzle, [(0, 1), (1, 2)], "GG_Belly", region="Head", rigid_bone="Head")
+    jaw = [((0, -0.10, 1.82), (0.10, 0.08)), ((0, -0.21, 1.825), (0.08, 0.05))]
+    b.skin("Jaw", jaw, [(0, 1)], "GG_Belly", region="Head", rigid_bone="Head")
+
+    # 鼻と、つやの点
+    b.ball("Nose", (0, -0.282, 1.897), (0.045, 0.03, 0.032), "GG_Dark", "Head")
+    b.ball("NoseShine", (0.014, -0.308, 1.908), (0.01, 0.005, 0.007), "GG_Cream", "Head")
+    # 口: 鼻から下りる線と、への字の口
+    b.box("Philtrum", (0, -0.282, 1.862), (0.006, 0.006, 0.03), "GG_Dark", "Head")
+    for s, side in ((1, "L"), (-1, "R")):
+        b.box(f"Mouth{side}", (s * 0.03, -0.272, 1.846), (0.06, 0.008, 0.007), "GG_Dark", "Head", rot=(0, s * 14, 0))
+        b.limb(f"Fang{side}", (s * 0.034, -0.27, 1.85), (s * 0.036, -0.274, 1.80), 0.014, 0.002, "GG_Cream", "Head", seg=6)
+        # 目: 白目 + 黒目 + 小さな光(つり上がった怒り目)
+        b.ball(f"EyeWhite{side}", (s * 0.078, -0.182, 1.968), (0.033, 0.014, 0.022), "GG_Cream", "Head",
+               rot=(0, -s * 15, 0))
+        b.ball(f"Pupil{side}", (s * 0.07, -0.194, 1.965), (0.012, 0.007, 0.014), "GG_Dark", "Head")
+        b.ball(f"EyeShine{side}", (s * 0.065, -0.2, 1.972), (0.004, 0.003, 0.004), "GG_Cream", "Head")
+        # 太くつり上がったまゆ
+        b.box(f"Brow{side}", (s * 0.078, -0.19, 2.0), (0.06, 0.024, 0.015), "GG_Dark", "Head", rot=(0, -s * 25, 0))
+        # ほおの毛(外向きにとがった房を2つ)
+        b.limb(f"CheekTuft{side}0", (s * 0.15, -0.06, 1.85), (s * 0.215, -0.055, 1.83), 0.026, 0.003, "GG_Fur", "Head", seg=6)
+        b.limb(f"CheekTuft{side}1", (s * 0.14, -0.04, 1.82), (s * 0.20, -0.025, 1.79), 0.022, 0.003, "GG_Fur", "Head", seg=6)
+        # 耳
+        b.ball(f"Ear{side}", (s * 0.15, 0.01, 2.08), (0.065, 0.035, 0.065), "GG_Fur", "Head")
+        b.ball(f"EarIn{side}", (s * 0.15, -0.016, 2.08), (0.036, 0.015, 0.036), "GG_Belly", "Head")
+    b.box("Scar", (-0.078, -0.198, 1.968), (0.006, 0.01, 0.085), "GG_Cream", "Head", rot=(0, 20, 0))  # 右目の古傷
+    # 額の三日月の模様: 白い円盤の上に毛の色の円盤を少しずらして重ねる
+    b.disc("MoonMark", (0, -0.150, 2.05), 0.034, 0.004, "GG_Cream", "Head", rot=(55, 0, 0))
+    b.disc("MoonMarkCut", (0.013, -0.153, 2.054), 0.03, 0.004, "GG_Fur", "Head", rot=(55, 0, 0))
+
+
 def build_body(b):
     """ゴウガの体の部品を全部作る。"""
-    # --- 頭: 丸い熊の頭、鼻先、耳、額の三日月 ---
-    b.ball("Head", (0, -0.02, 1.93), (0.20, 0.19, 0.19), "GG_Fur", "Head")
-    b.ball("Muzzle", (0, -0.18, 1.87), (0.10, 0.10, 0.075), "GG_Belly", "Head")
-    b.ball("Nose", (0, -0.272, 1.905), (0.042, 0.03, 0.03), "GG_Dark", "Head")
-    b.box("Mouth", (0, -0.252, 1.835), (0.08, 0.012, 0.01), "GG_Dark", "Head")
-    for s, side in ((1, "L"), (-1, "R")):
-        # 怒った目(内側が下がった細い目)と、太いまゆ
-        b.box(f"Eye{side}", (s * 0.075, -0.178, 1.965), (0.04, 0.012, 0.013), "GG_Dark", "Head", rot=(0, -s * 20, 0))
-        b.box(f"Brow{side}", (s * 0.075, -0.183, 1.99), (0.07, 0.035, 0.024), "GG_Dark", "Head", rot=(0, -s * 22, 0))
-        # 下あごからのぞく牙
-        b.limb(f"Fang{side}", (s * 0.032, -0.25, 1.845), (s * 0.032, -0.254, 1.805), 0.012, 0.002, "GG_Cream", "Head", seg=6)
-        b.ball(f"Ear{side}", (s * 0.14, 0.0, 2.085), (0.065, 0.035, 0.065), "GG_Fur", "Head")
-        b.ball(f"EarIn{side}", (s * 0.14, -0.025, 2.085), (0.035, 0.015, 0.035), "GG_Belly", "Head")
-    b.box("Scar", (-0.075, -0.188, 1.965), (0.008, 0.01, 0.09), "GG_Cream", "Head", rot=(0, 20, 0))  # 右目の古傷
-    # 三日月の模様: 白い円盤の上に毛の色の円盤を少しずらして重ね、三日月に見せる
-    b.disc("MoonMark", (0, -0.192, 2.04), 0.04, 0.012, "GG_Cream", "Head", rot=(80, 0, 0))
-    b.disc("MoonMarkCut", (0.016, -0.198, 2.047), 0.035, 0.012, "GG_Fur", "Head", rot=(80, 0, 0))
-
+    build_head(b)
     # --- 胴: 骨組みに肉付けした、なめらかな太い胴(胸・腹・首の後ろの盛り上がり・肩) ---
     torso = [
         ((0, 0, 0.96), (0.27, 0.22)),       # 0 腰
@@ -185,7 +217,7 @@ def main():
     cb.build_actions(arm, gouga_anims.ANIMS)
     b.export_fbx(FBX_PATH)
     b.toon_preview(outline=0.006)  # 確認画像だけトゥーン調にする(FBX は書き出し済み)
-    cam = b.render_previews(PREVIEW_PREFIX, HEIGHT)
+    cam = b.render_previews(PREVIEW_PREFIX, HEIGHT, face=((0, -0.12, 1.97), 0.62))  # 顔のアップも出す
     cb.render_contact_sheet(arm, gouga_anims.ANIMS, cam, PREVIEW_PREFIX + "anims.png", HEIGHT)
     import bpy
     bpy.data.objects.remove(cam)

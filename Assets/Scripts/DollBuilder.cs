@@ -3,11 +3,51 @@ using UnityEngine;
 namespace Fight3D
 {
     /// <summary>
-    /// 仮モデル(人形)を Unity の基本図形(箱・球・カプセル)の組み合わせで作る。
-    /// 本番の3Dモデルができたら、ここを差し替える。
+    /// キャラの見た目を作る。
+    /// - 本番の3Dモデル(Blender で作った FBX。Assets/Models/Characters/Resources/Fighters)があれば、それを使う(TryBuildModel)
+    /// - 無いとき・読み込めないときは、仮モデル(人形)を Unity の基本図形(箱・球・カプセル)の組み合わせで作る
     /// </summary>
     public static class DollBuilder
     {
+        /// <summary>本番モデルを置く Resources の中のフォルダ</summary>
+        const string ModelFolder = "Fighters/";
+
+        /// <summary>
+        /// 本番の3Dモデルでキャラの見た目を作る。modelName は "Kagetsu" や "Gouga"(FBX のファイル名)。
+        /// 見つからない・人型(Humanoid)になっていない・アニメが無いときは null を返す(呼ぶ側で人形に切り替える)。
+        /// 作りは人形と同じで、ルート → Visual → モデル。swordPivot は人形用の剣の支点の代わりの空の物
+        /// (本番モデルの剣・腕はアニメで動くので、FighterController が回しても見た目は変わらない)。
+        /// </summary>
+        public static GameObject TryBuildModel(string modelName, out Transform swordPivot, out Animator animator, out AnimationClip[] clips)
+        {
+            swordPivot = null;
+            animator = null;
+            clips = null;
+            var prefab = Resources.Load<GameObject>(ModelFolder + modelName);
+            if (prefab == null) return null;
+            var loadedClips = Resources.LoadAll<AnimationClip>(ModelFolder + modelName);
+            if (loadedClips == null || loadedClips.Length == 0) return null;
+
+            var root = new GameObject(modelName);
+            var visual = new GameObject("Visual").transform;  // 浮きで持ち上げる・人形と同じ作りにするためのまとめ役
+            visual.SetParent(root.transform, false);
+            var model = Object.Instantiate(prefab, visual, false);
+            model.name = "Model";
+            var anim = model.GetComponent<Animator>();
+            if (anim == null || anim.avatar == null || !anim.avatar.isHuman)
+            {
+                Object.Destroy(root);  // 人型の設定になっていないモデルはアニメを流せないので使わない
+                return null;
+            }
+            anim.runtimeAnimatorController = null;  // アニメは CharacterAnimator が直接流す
+
+            var pivot = new GameObject("SwordPivot").transform;  // 人形用の剣の支点の代わり(空)
+            pivot.SetParent(visual, false);
+            swordPivot = pivot;
+            animator = anim;
+            clips = loadedClips;
+            return root;
+        }
         /// <summary>基本図形を作り、色をつけ、当たり判定(コライダー)を外す</summary>
         public static GameObject Part(PrimitiveType type, string name, Transform parent,
             Vector3 localPos, Vector3 localScale, Color color)
