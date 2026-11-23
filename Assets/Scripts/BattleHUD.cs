@@ -9,7 +9,7 @@ namespace Fight3D
     /// - 上: 両方の体力バー・名前・取ったラウンド(●)・残り時間
     /// - 真ん中: ROUND 1 / FIGHT! / K.O. / YOU WIN! などの大きな文字(出るときに LitMotion で縮む)
     /// - 下: 両方のウルトゲージと、今の動作
-    /// - キー: R = 試合をやり直す、F5 = キャラ切り替え、F6 = トレーニングへ戻る
+    /// - キー: R = 試合をやり直す、F5 = キャラ切り替え、F6 = トレーニングへ戻る(コントローラーは START / SELECT + RB / SELECT + LB)
     /// (仮の表示なので OnGUI で描いている。本番の画面は後で作る)
     /// </summary>
     public class BattleHUD : MonoBehaviour
@@ -21,16 +21,13 @@ namespace Fight3D
         float bannerScale = 1f;      // 真ん中の文字の大きさの倍率(LitMotion で動かす)
         MotionHandle bannerMotion;   // 真ん中の文字のアニメ
 
-        /// <summary>画面の更新ごとに呼ばれる。キー(R / F5 / F6)を受け付け、真ん中の文字のアニメを始める</summary>
+        /// <summary>画面の更新ごとに呼ばれる。操作(R / F5 / F6、コントローラーは START / SELECT + RB / SELECT + LB)を受け付け、真ん中の文字のアニメを始める</summary>
         void Update()
         {
-            var kb = Keyboard.current;
-            if (kb != null)
-            {
-                if (kb.rKey.wasPressedThisFrame && Battle != null) Battle.RestartMatch();
-                if (kb.f5Key.wasPressedThisFrame) GameBootstrap.SwitchCharacter();
-                if (kb.f6Key.wasPressedThisFrame) GameBootstrap.SwitchMode();
-            }
+            // キーボードとコントローラー(ShortcutInput を見る)
+            if (ShortcutInput.RestartMatch && Battle != null) Battle.RestartMatch();  // R / START
+            if (ShortcutInput.SwitchCharacter) GameBootstrap.SwitchCharacter();      // F5 / SELECT + RB
+            if (ShortcutInput.SwitchMode) GameBootstrap.SwitchMode();                // F6 / SELECT + LB
 
             if (Battle != null && Battle.BannerSerial != shownBannerSerial)
             {
@@ -119,7 +116,7 @@ namespace Fight3D
             DrawGauge(Battle.Cpu, new Rect(Screen.width - margin - w, y, w, h), true, s);
 
             var help = new GUIStyle(labelStyle) { alignment = TextAnchor.MiddleCenter, fontSize = Mathf.RoundToInt(22 * s) };
-            GUI.Label(new Rect(0, Screen.height - 46 * s, Screen.width, 40 * s), "R: やり直す   F5: キャラ切り替え   F6: トレーニングへ", help);
+            GUI.Label(new Rect(0, Screen.height - 46 * s, Screen.width, 40 * s), "R / START: やり直す   F5 / SELECT+RB: キャラ切り替え   F6 / SELECT+LB: トレーニングへ", help);
         }
 
         /// <summary>1人分のウルトゲージと今の動作</summary>
@@ -148,7 +145,7 @@ namespace Fight3D
             if (Battle.Phase == BattlePhase.MatchEnd)
             {
                 var sub = new GUIStyle(labelStyle) { alignment = TextAnchor.MiddleCenter, fontSize = Mathf.RoundToInt(34 * s) };
-                GUI.Label(new Rect(0, rect.yMax, Screen.width, 60 * s), "R でもう一度 / F6 でトレーニングへ", sub);
+                GUI.Label(new Rect(0, rect.yMax, Screen.width, 60 * s), "R / START でもう一度   F6 / SELECT+LB でトレーニングへ", sub);
             }
         }
 

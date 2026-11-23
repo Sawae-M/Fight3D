@@ -167,6 +167,8 @@ namespace Fight3D
         /// <summary>キーボード・コントローラーの押した瞬間のボタンを拾う(FixedUpdate だと取りこぼすことがある)</summary>
         void ReadPlayerInput()
         {
+            // コントローラーの SELECT を押している間は、ボタンはトレーニング設定などの操作になる(ShortcutInput)ので技は出さない
+            if (ShortcutInput.MenuHeld) return;
             if (input.Light.WasPressedThisFrame()) pressedCommand = Command.Light;
             if (input.Medium.WasPressedThisFrame()) pressedCommand = Command.Medium;
             if (input.Heavy.WasPressedThisFrame())

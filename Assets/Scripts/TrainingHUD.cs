@@ -70,18 +70,16 @@ namespace Fight3D
         /// <summary>消えるときに呼ばれる。出ている数字・文字を消す</summary>
         void OnDestroy() { popups.Clear(); }
 
-        /// <summary>画面の更新ごとに呼ばれる。トレーニング設定のキー(F1〜F5)を受け付ける</summary>
+        /// <summary>画面の更新ごとに呼ばれる。トレーニング設定の操作(F1〜F6 / SELECT + ボタン)を受け付ける</summary>
         void Update()
         {
-            // トレーニング設定(キーボードの F1〜F5)
-            var kb = Keyboard.current;
-            if (kb == null) return;
-            if (kb.f1Key.wasPressedThisFrame && Sandbag != null) Sandbag.GuardEnabled = !Sandbag.GuardEnabled;
-            if (kb.f2Key.wasPressedThisFrame && Fighter != null) Fighter.AddGauge(Tuning.Fighter.MaxGauge);
-            if (kb.f3Key.wasPressedThisFrame && Sandbag != null) Sandbag.AttackEnabled = !Sandbag.AttackEnabled;
-            if (kb.f4Key.wasPressedThisFrame && Fighter != null) Fighter.SetHpRatio(NextHpStep());
-            if (kb.f5Key.wasPressedThisFrame) GameBootstrap.SwitchCharacter();
-            if (kb.f6Key.wasPressedThisFrame) GameBootstrap.SwitchMode();
+            // トレーニング設定(キーボードの F1〜F6 / コントローラーは SELECT + ボタン。ShortcutInput を見る)
+            if (ShortcutInput.ToggleSandbagGuard && Sandbag != null) Sandbag.GuardEnabled = !Sandbag.GuardEnabled;
+            if (ShortcutInput.FillGauge && Fighter != null) Fighter.AddGauge(Tuning.Fighter.MaxGauge);
+            if (ShortcutInput.ToggleSandbagAttack && Sandbag != null) Sandbag.AttackEnabled = !Sandbag.AttackEnabled;
+            if (ShortcutInput.CycleHp && Fighter != null) Fighter.SetHpRatio(NextHpStep());
+            if (ShortcutInput.SwitchCharacter) GameBootstrap.SwitchCharacter();
+            if (ShortcutInput.SwitchMode) GameBootstrap.SwitchMode();
         }
 
         /// <summary>F4 で次に選ぶ体力の割合: 今の体力より少ない段階のうち一番近いもの。一番下まで来たら 100% に戻る</summary>
@@ -170,9 +168,9 @@ namespace Fight3D
             GUI.Label(new Rect(lx, ly, w, lh), $"{bonusLabel}: +{bonus}%", labelStyle); ly += lh;
             GUI.Label(new Rect(lx, ly, w, lh), $"状態: {Sandbag.StateText}", labelStyle); ly += lh;
             string guard = Sandbag.GuardEnabled ? "<color=#7fd0ff>ON</color>" : "OFF";
-            GUI.Label(new Rect(lx, ly, w, lh), $"[F1] ガードする: {guard}", labelStyle); ly += lh;
+            GUI.Label(new Rect(lx, ly, w, lh), $"[F1 / SELECT+X] ガードする: {guard}", labelStyle); ly += lh;
             string attack = Sandbag.AttackEnabled ? "<color=#ff8080>ON</color>" : "OFF";
-            GUI.Label(new Rect(lx, ly, w, lh), $"[F3] 殴ってくる: {attack}", labelStyle);
+            GUI.Label(new Rect(lx, ly, w, lh), $"[F3 / SELECT+B] 殴ってくる: {attack}", labelStyle);
         }
 
         /// <summary>左上の操作説明を描く</summary>
@@ -190,13 +188,13 @@ namespace Fight3D
             if (Fighter != null) lines.AddRange(Fighter.Kit.MoveHelpLines);  // スキル1〜3 とウルト(キャラごと)
             lines.AddRange(new[]
             {
-                "ガード: J",
-                "回避: K(+方向)",
-                "リセット: R",
-                "[F2] ゲージ満タン",
-                "[F4] 自分の体力を減らす",
-                "[F5] キャラ切り替え",
-                "[F6] CPU対戦へ",
+                "ガード: J / LB・LT",
+                "回避: K / A(+方向)",
+                "リセット: R / START",
+                "[F2 / SELECT+Y] ゲージ満タン",
+                "[F4 / SELECT+A] 自分の体力を減らす",
+                "[F5 / SELECT+RB] キャラ切り替え",
+                "[F6 / SELECT+LB] CPU対戦へ",
             });
             float lh = 34 * s;
             GUI.Box(new Rect(x, y, w, lh * lines.Count + 24 * s), GUIContent.none, boxStyle);

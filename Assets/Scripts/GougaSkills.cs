@@ -126,7 +126,7 @@ namespace Fight3D
         }
 
         /// <summary>左上の操作説明(技の行)</summary>
-        public override string[] MoveHelpLines => new[] { "岩砕き: P", "剛腕引き: W+P", "受け止め: S+P", "大地崩し: O+P" };
+        public override string[] MoveHelpLines => new[] { "岩砕き: P / RB", "剛腕引き: W+P / 上+RB", "受け止め: S+P / 下+RB", "大地崩し: O+P / B+RB" };
 
         /// <summary>下のパネルのスキル状態(1行に1つ)</summary>
         public override string[] StatusLines()
