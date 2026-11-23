@@ -17,6 +17,9 @@ namespace Fight3D
         Vector3 direction;        // 進む向き(長さ1、水平)
         float travelled;          // ここまでに進んだ距離(m)
         bool hasHit;              // もう当たったか(1回しか当たらない)
+        float nextDust;           // 次に土ぼこりを出す距離(m)
+
+        const float DustSpacing = 0.6f;  // 土ぼこりを出す間隔(m)。見た目だけ [仮]
 
         /// <summary>衝撃波を出す(origin = 出る位置、direction = 進む向き)</summary>
         public static Shockwave Spawn(FighterController owner, MoveData move, Vector3 origin, Vector3 direction, Transform target)
@@ -46,6 +49,11 @@ namespace Fight3D
             float step = Tuning.Gouga.ShockwaveSpeed / Tuning.Game.FramesPerSecond;  // 1F に進む距離(m)
             transform.position += direction * step;
             travelled += step;
+            if (travelled >= nextDust)
+            {
+                HitFx.Dust(new Vector3(transform.position.x, 0.05f, transform.position.z));  // 通り道に土ぼこり(見た目だけ)
+                nextDust += DustSpacing;
+            }
 
             if (!hasHit && owner != null && target != null)
             {

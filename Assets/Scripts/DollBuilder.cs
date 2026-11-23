@@ -12,6 +12,9 @@ namespace Fight3D
         /// <summary>本番モデルを置く Resources の中のフォルダ</summary>
         const string ModelFolder = "Fighters/";
 
+        /// <summary>カゲツの T ポーズでの、刃の真ん中より少し先の位置(モデルの足元から見た m)。Blender の build_kagetsu.py の剣の位置から計算 [仮]</summary>
+        static readonly Vector3 KagetsuBladePoint = new Vector3(0.765f, 1.515f, 0.7f);
+
         /// <summary>
         /// 本番の3Dモデルでキャラの見た目を作る。modelName は "Kagetsu" や "Gouga"(FBX のファイル名)。
         /// 見つからない・人型(Humanoid)になっていない・アニメが無いときは null を返す(呼ぶ側で人形に切り替える)。
@@ -40,6 +43,10 @@ namespace Fight3D
                 return null;
             }
             anim.runtimeAnimatorController = null;  // アニメは CharacterAnimator が直接流す
+
+            // カゲツは剣の軌跡を付ける(モデルは作った直後は T ポーズなので、その姿勢で刃の位置を決める)
+            if (modelName == "Kagetsu")
+                HitFx.AddWeaponTrail(anim.GetBoneTransform(HumanBodyBones.RightHand), model.transform.TransformPoint(KagetsuBladePoint));
 
             var pivot = new GameObject("SwordPivot").transform;  // 人形用の剣の支点の代わり(空)
             pivot.SetParent(visual, false);

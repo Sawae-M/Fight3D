@@ -470,8 +470,34 @@ namespace Fight3D
                 AddGauge(Tuning.Fighter.GaugeOnGuarded); // ガードされた
             }
             hitstopLeft = hitstop;
+            SpawnHitFx(result.Outcome);
             return result.Outcome;
         }
+
+        /// <summary>攻撃が当たった・ガードされたときの小さな火花を、相手の体の手前に出す(見た目だけ)</summary>
+        void SpawnHitFx(HitOutcome outcome)
+        {
+            if (Opponent == null) return;
+            Vector3 targetPos = Opponent.transform.position;
+            Vector3 toMe = transform.position - targetPos;
+            toMe.y = 0f;
+            Vector3 point = targetPos + Vector3.up * HitFxHeight + (toMe.sqrMagnitude > 0.0001f ? toMe.normalized * OpponentBodyRadius : Vector3.zero);
+            switch (outcome)
+            {
+                case HitOutcome.Hit:
+                case HitOutcome.GuardCrushed:
+                    HitFx.Spark(point, HitFx.HitColor);
+                    break;
+                case HitOutcome.Guarded:
+                    HitFx.Spark(point, HitFx.GuardColor, 0.8f);
+                    break;
+                case HitOutcome.Countered:
+                    HitFx.Spark(point, HitFx.CounterColor, 0.9f);
+                    break;
+            }
+        }
+
+        const float HitFxHeight = 1.15f;  // 火花を出す高さ(m)。体の真ん中あたり [仮]
 
         /// <summary>技とは別に、必ず当たる追加ダメージを与える(カゲツの呪印の爆発など)。ダメージ倍率は効く</summary>
         public void BonusStrike(int damage, int hitstun, int hitstop, Command source)
