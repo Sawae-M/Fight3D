@@ -41,14 +41,24 @@ namespace Fight3D.Tests
             Assert.AreEqual(2, animators.Length, "本番モデル(アニメ付き)になっていないキャラがいる");
 
             var seen = animators.ToDictionary(a => a, a => new List<string>());
-            float t = 0f, nextShot = 0f;
-            int shot = 0;
+            float t = 0f, nextShot = 0f, nextFxShot = 0f;
+            int shot = 0, fxShot = 0, sparkFrames = 0, trailFrames = 0;
             while (t < PlaySeconds)
             {
                 foreach (var a in animators)
                 {
                     var list = seen[a];
                     if (a.CurrentClip != null && (list.Count == 0 || list[list.Count - 1] != a.CurrentClip)) list.Add(a.CurrentClip);
+                }
+                // 攻撃の演出: 火花が出ている・剣の軌跡が出ているフレームを数え、火花はときどき撮る
+                bool spark = GameObject.Find("HitSpark") != null;
+                if (spark) sparkFrames++;
+                if (Object.FindObjectsByType<TrailRenderer>(FindObjectsSortMode.None).Any(tr => tr.emitting)) trailFrames++;
+                if (spark && fxShot < 6 && t >= nextFxShot)
+                {
+                    Capture(Path.Combine(OutFolder, $"fx_{fxShot:00}.png"));
+                    fxShot++;
+                    nextFxShot = t + 1.5f;
                 }
                 if (t >= nextShot)
                 {
@@ -68,8 +78,11 @@ namespace Fight3D.Tests
                 sb.AppendLine($"== {kv.Key.name}: {distinct.Count} 種類 [{string.Join(", ", distinct)}]");
                 sb.AppendLine("順番: " + string.Join(" > ", kv.Value.Take(80)));
             }
+            sb.AppendLine($"演出: 火花が出ていたフレーム {sparkFrames} / 剣の軌跡が出ていたフレーム {trailFrames}");
             File.WriteAllText(Path.Combine(OutFolder, "clips.txt"), sb.ToString());
 
+            Assert.Greater(sparkFrames, 0, "攻撃が当たったのに火花が一度も出ていない");
+            Assert.Greater(trailFrames, 0, "カゲツの剣の軌跡が一度も出ていない");
             foreach (var kv in seen)
                 Assert.GreaterOrEqual(kv.Value.Distinct().Count(), 3, $"{kv.Key.name} のアニメが3種類も流れていない");
         }

@@ -34,6 +34,7 @@ namespace Fight3D
         };
 
         FighterController fighter;  // 状態を見るキャラ
+        TrailRenderer weaponTrail;  // 剣の軌跡(カゲツだけ。無ければ null)
         readonly Dictionary<string, AnimationClip> clips = new Dictionary<string, AnimationClip>();  // 名前 → クリップ
 
         PlayableGraph graph;               // アニメを流す仕組み
@@ -55,6 +56,7 @@ namespace Fight3D
         {
             var ca = root.AddComponent<CharacterAnimator>();
             ca.fighter = fighter;
+            ca.weaponTrail = root.GetComponentInChildren<TrailRenderer>();
             foreach (var c in clipList)
                 if (c != null && !c.name.StartsWith("__preview__")) ca.clips[c.name] = c;  // プレビュー用の余分なクリップは除く
 
@@ -135,6 +137,8 @@ namespace Fight3D
             if (!clips.ContainsKey(clip)) return;         // 待機のアニメも無いときは何もしない
 
             bool isAction = syncedTime.HasValue;
+            // 剣の軌跡は、技を出している間だけ出す(歩き・やられ・回避では出さない)
+            if (weaponTrail != null) weaponTrail.emitting = fighter.CurrentMove != null && !fighter.InHitstun;
             // 同じ技をもう一度出したとき(時間が巻き戻った)も、最初から流し直す
             bool restarted = isAction && clip == nowName && now.IsValid() && syncedTime.Value + 0.001f < now.GetTime();
             if (clip != nowName || restarted) Play(clip, isAction ? ActionCrossFade : CrossFade);
