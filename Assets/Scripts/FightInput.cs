@@ -12,10 +12,12 @@ namespace Fight3D
     /// | 操作       | キーボード | コントローラー(仮)        |
     /// | 移動       | W A S D    | 左スティック / 十字キー   |
     /// | 弱/中/強   | U / I / O  | X(□) / Y(△) / B(○)       |
-    /// | スキル     | P          | RB(R1)                    |
-    /// | ガード     | J          | LB(L1)                    |
+    /// | スキル     | P          | RB(R1) / RT(R2)           |
+    /// | ガード     | J          | LB(L1) / LT(L2)           |
     /// | 回避       | K          | A(×)                      |
     /// | リセット   | R          | START / OPTIONS           |
+    ///
+    /// トレーニング設定や切り替え(F1〜F6)は ShortcutInput を見る(コントローラーは SELECT を押しながらボタン)。
     /// </summary>
     public class FightInput : System.IDisposable
     {
@@ -84,7 +86,9 @@ namespace Fight3D
             AddButton(map, "Medium", "<Keyboard>/i", "<Gamepad>/buttonNorth");
             AddButton(map, "Heavy", "<Keyboard>/o", "<Gamepad>/buttonEast");
             AddButton(map, "Skill", "<Keyboard>/p", "<Gamepad>/rightShoulder");
+            map.FindAction("Skill").AddBinding("<Gamepad>/rightTrigger");
             AddButton(map, "Guard", "<Keyboard>/j", "<Gamepad>/leftShoulder");
+            map.FindAction("Guard").AddBinding("<Gamepad>/leftTrigger");
             AddButton(map, "Dodge", "<Keyboard>/k", "<Gamepad>/buttonSouth");
             AddButton(map, "Reset", "<Keyboard>/r", "<Gamepad>/start");
             return a;
@@ -96,6 +100,48 @@ namespace Fight3D
             var action = map.AddAction(name, InputActionType.Button);
             action.AddBinding(key);
             action.AddBinding(pad);
+        }
+    }
+
+    /// <summary>
+    /// トレーニング設定・切り替え・やり直しの操作(キーボードとコントローラー)。
+    /// コントローラーは SELECT(VIEW / SHARE)を押しながら、もう1つのボタンを押す。
+    /// SELECT を押している間は、攻撃などのボタンは出ない(FighterController が MenuHeld を見る)。
+    ///
+    /// | 操作                         | キーボード | コントローラー            |
+    /// | サンドバッグのガード ON/OFF   | F1         | SELECT + X(□)            |
+    /// | ゲージ満タン                 | F2         | SELECT + Y(△)            |
+    /// | サンドバッグが殴ってくる ON/OFF | F3       | SELECT + B(○)            |
+    /// | 自分の体力を減らす           | F4         | SELECT + A(×)            |
+    /// | キャラ切り替え               | F5         | SELECT + RB(R1)           |
+    /// | トレーニング ⇔ CPU対戦       | F6         | SELECT + LB(L1)           |
+    /// | 試合をやり直す(CPU対戦)      | R          | START(OPTIONS)           |
+    /// </summary>
+    public static class ShortcutInput
+    {
+        /// <summary>コントローラーの SELECT を押しているか(押している間は、攻撃などの代わりに設定の操作になる)</summary>
+        public static bool MenuHeld => Gamepad.current != null && Gamepad.current.selectButton.isPressed;
+
+        public static bool ToggleSandbagGuard => Pressed(k => k.f1Key, p => p.buttonWest);   // F1
+        public static bool FillGauge => Pressed(k => k.f2Key, p => p.buttonNorth);           // F2
+        public static bool ToggleSandbagAttack => Pressed(k => k.f3Key, p => p.buttonEast);  // F3
+        public static bool CycleHp => Pressed(k => k.f4Key, p => p.buttonSouth);             // F4
+        public static bool SwitchCharacter => Pressed(k => k.f5Key, p => p.rightShoulder);   // F5
+        public static bool SwitchMode => Pressed(k => k.f6Key, p => p.leftShoulder);         // F6
+
+        /// <summary>試合をやり直す(R / START)。START は SELECT を押していなくてよい</summary>
+        public static bool RestartMatch =>
+            (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame) ||
+            (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame);
+
+        /// <summary>キーボードのキーが押された、または SELECT を押しながらコントローラーのボタンが押された瞬間か</summary>
+        static bool Pressed(System.Func<Keyboard, UnityEngine.InputSystem.Controls.KeyControl> key,
+            System.Func<Gamepad, UnityEngine.InputSystem.Controls.ButtonControl> pad)
+        {
+            var kb = Keyboard.current;
+            if (kb != null && key(kb).wasPressedThisFrame) return true;
+            var gp = Gamepad.current;
+            return gp != null && gp.selectButton.isPressed && pad(gp).wasPressedThisFrame;
         }
     }
 }

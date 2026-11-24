@@ -188,7 +188,7 @@ namespace Fight3D
         }
 
         /// <summary>左上の操作説明(技の行)</summary>
-        public override string[] MoveHelpLines => new[] { "影穿ち: P", "三日月払い: W+P", "仮面解放: S+P", "冥月斬: O+P" };
+        public override string[] MoveHelpLines => new[] { "影穿ち: P / RB", "三日月払い: W+P / 上+RB", "仮面解放: S+P / 下+RB", "冥月斬: O+P / B+RB" };
 
         /// <summary>下のパネルのスキル状態(1行に1つ)</summary>
         public override string[] StatusLines()

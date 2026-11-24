@@ -246,6 +246,17 @@
                 },
                 {
                     "name": "",
+                    "id": "592b0cde-e14e-437a-9410-e71ff96159ef",
+                    "path": "<Gamepad>/rightTrigger",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "Skill",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
                     "id": "43703c58-d2fb-428d-848c-684cf103c8b5",
                     "path": "<Keyboard>/j",
                     "interactions": "",
@@ -259,6 +270,17 @@
                     "name": "",
                     "id": "9d1aa6e2-0ac9-4565-97b9-d3895a36ed7d",
                     "path": "<Gamepad>/leftShoulder",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "Guard",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d0861279-7923-45da-8b18-f84b148a53ec",
+                    "path": "<Gamepad>/leftTrigger",
                     "interactions": "",
                     "processors": "",
                     "groups": "Gamepad",
